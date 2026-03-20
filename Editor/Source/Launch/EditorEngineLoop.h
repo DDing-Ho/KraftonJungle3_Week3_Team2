@@ -31,6 +31,7 @@ private:
     
     /* Flags */
     bool bIsExit = false;
+    // bool bIsResizing = false;
     
     /* Properties */
     HWND HWindow = nullptr;
