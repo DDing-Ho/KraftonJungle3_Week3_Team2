@@ -9,7 +9,6 @@
 #include <thread>
 #endif
 
-// TODO
 struct FPlatformTime
 {
     static double Seconds();
