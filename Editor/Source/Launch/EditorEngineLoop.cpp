@@ -36,6 +36,13 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
         bIsExit = true;
         PostQuitMessage(0);
         return 0;
+    case WM_SIZE:
+        if (Editor)
+        {
+            Editor->OnWindowResized(LOWORD(LParam), HIWORD(LParam));    
+        }
+    case WM_SIZING:
+        //  Render for Re-Sizing
     default:
         break;
     }
@@ -71,8 +78,9 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
     }
     
     /* Editor Initialize */
-    Editor.Create(HWindow);
-    Editor.BeginPlay();
+    Editor = new FEditor();
+    Editor->Create(HWindow);
+    Editor->BeginPlay();
 
     InitializeForTime();
     return true;
@@ -108,7 +116,10 @@ int32 FEditorEngineLoop::Run()
 
 void FEditorEngineLoop::Shutdown()
 {
-    Editor.Release();
+    Editor->Release();
+    delete Editor;
+    Editor = nullptr;
+    
     //  TODO : Garbage Sweep
 }
 
@@ -120,9 +131,7 @@ void FEditorEngineLoop::Tick()
     PrevTime = CurTime;
 
     /* Editor Update */
-    Editor.BeginFrame();
-    Editor.Update();
-    Editor.EndFrame();
+    Editor->Update();
 
     Sleep(0);
 }
