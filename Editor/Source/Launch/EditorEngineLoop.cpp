@@ -114,7 +114,7 @@ int32 FEditorEngineLoop::Run()
     return 0;
 }
 
-void FEditorEngineLoop::Shutdown()
+void FEditorEngineLoop::ShutDown()
 {
     Editor->Release();
     delete Editor;
@@ -125,14 +125,24 @@ void FEditorEngineLoop::Shutdown()
 
 void FEditorEngineLoop::Tick()
 {
+    /* Application Pump Message */
+    
     /* Time Measuring */
     DeltaTime = FPlatformTime::Seconds() - PrevTime;
     PrevTime = FPlatformTime::Seconds();
 
     MainLoopFPS = 1.0f / DeltaTime;
 
+    /* Engine Tick */
+    //  Engine->Tick(DeltaTime);
     /* Editor Update */
-    Editor->Update();
+    Editor->Tick(DeltaTime);
+    
+    /* Rendering Prepare Stage */
+    
+    /* Editor Viewport Client */
+    
+    /* Render End Stage */
 
     FPlatformTime::Sleep(0.f);
 }

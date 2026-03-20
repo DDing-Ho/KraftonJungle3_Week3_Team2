@@ -1,4 +1,4 @@
-#include "HAL/PlatformTime.h"
+#include "Core/HAL/PlatformTime.h"
 
 #if defined(_WIN32)
 
@@ -16,13 +16,13 @@ namespace
     }
 } // namespace
 
-double FPlatformTime::Seconds()
+float FPlatformTime::Seconds()
 {
     LARGE_INTEGER Counter{};
     ::QueryPerformanceCounter(&Counter);
 
     const LARGE_INTEGER Frequency = GetQpcFrequency();
-    return static_cast<double>(Counter.QuadPart) / static_cast<double>(Frequency.QuadPart);
+    return static_cast<float>(Counter.QuadPart) / static_cast<float>(Frequency.QuadPart);
 }
 
 uint64 FPlatformTime::Cycles64()

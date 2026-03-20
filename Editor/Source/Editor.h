@@ -6,12 +6,12 @@
 class ENGINE_API FEditor
 {
 public:
-    /* �⺻ ��� */
+    /* Default Functions */
     void Create(HWND);
     void Release();
     
     void BeginPlay();
-    void Update();
+    void Tick(float DeltaTime);
     
     void OnWindowResized(float Width, float Height);
     void SetMainLoopFPS(float FPS) { CurFPS = FPS; }
@@ -38,6 +38,6 @@ private:
     float WindowWidth = 0.0f;
     float WindowHeight = 0.0f;
     
-    float CurFPS = 0.0f;    //  Panel�� �ٷ� �Ѱ��ָ�, ���� ����
+    float CurFPS = 0.0f;    //  Panel에 Display
     
 };
