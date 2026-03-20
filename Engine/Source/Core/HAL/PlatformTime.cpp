@@ -34,7 +34,7 @@ uint64 FPlatformTime::Cycles64()
 
 void FPlatformTime::Sleep(float Seconds)
 {
-    if (Seconds <= 0.0f)
+    if (Seconds < 0.0f)
     {
         return;
     }

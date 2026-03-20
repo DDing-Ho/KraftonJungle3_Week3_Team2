@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HAL/PlatformTypes.h"
+#include "Core/HAL/PlatformTypes.h"
 
 #if defined(_WIN32)
 #include <Windows.h>

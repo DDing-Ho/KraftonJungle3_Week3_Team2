@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreMinimal.h"
 #include "Editor.h" //  이후에 Directory 만들어야 하나?
+#include "Launch/EngineLoop.h"
 
-class ENGINE_API FEditorEngineLoop
+class ENGINE_API FEditorEngineLoop : public FEngineLoop
 {
 public:
     bool PreInit(HINSTANCE HInstance, uint32 NCmdShow);
@@ -22,12 +23,10 @@ public:
 private:
     /* Time Measure */
     float DeltaTime = 0.0f;
-    float Accumulator = 0.0f;
     float MainLoopFPS = 0.0f;
-    
-    LARGE_INTEGER Frequency = {};
-    LARGE_INTEGER PrevTime = {};
-    LARGE_INTEGER CurTime = {};
+
+    float PrevTime = 0.0f;
+    //float CurTime = 0.0f;
     
     /* Flags */
     bool bIsExit = false;

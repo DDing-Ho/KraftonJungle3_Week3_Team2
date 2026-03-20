@@ -1,4 +1,4 @@
-﻿#include "EditorEngineLoop.h"
+#include "EditorEngineLoop.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, uint32 msg, WPARAM wParam, LPARAM lParam);
 
@@ -126,20 +126,19 @@ void FEditorEngineLoop::Shutdown()
 void FEditorEngineLoop::Tick()
 {
     /* Time Measuring */
-    QueryPerformanceCounter(&CurTime);
-    DeltaTime = static_cast<float>(CurTime.QuadPart - PrevTime.QuadPart);
-    PrevTime = CurTime;
+    DeltaTime = FPlatformTime::Seconds() - PrevTime;
+    PrevTime = FPlatformTime::Seconds();
+
+    MainLoopFPS = 1.0f / DeltaTime;
 
     /* Editor Update */
     Editor->Update();
 
-    Sleep(0);
+    FPlatformTime::Sleep(0.f);
 }
 
 void FEditorEngineLoop::InitializeForTime()
 {
-    QueryPerformanceFrequency(&Frequency);
-    QueryPerformanceCounter(&PrevTime);
+    PrevTime = FPlatformTime::Seconds();
     DeltaTime = 0.0f;
-    Accumulator = 0.0f;
 }
