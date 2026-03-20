@@ -4,20 +4,21 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, uint32 msg, WPARAM wPar
 
 LRESULT FEditorEngineLoop::StaticWndProc(HWND HWnd, UINT Message, WPARAM WParam, LPARAM LParam)
 {
-    FEditorEngineLoop * EditorEngineLoop = reinterpret_cast<FEditorEngineLoop *>(GetWindowLongPtr(HWnd, GWLP_USERDATA));
-    
+    FEditorEngineLoop *EditorEngineLoop = reinterpret_cast<FEditorEngineLoop *>(GetWindowLongPtr(
+        HWnd, GWLP_USERDATA));
+
     if (Message == WM_NCCREATE)
     {
-        CREATESTRUCTW * CreateStruct = reinterpret_cast<CREATESTRUCTW *>(LParam);
-        EditorEngineLoop = reinterpret_cast<FEditorEngineLoop*>(CreateStruct->lpCreateParams);
+        CREATESTRUCTW *CreateStruct = reinterpret_cast<CREATESTRUCTW *>(LParam);
+        EditorEngineLoop = reinterpret_cast<FEditorEngineLoop *>(CreateStruct->lpCreateParams);
         SetWindowLongPtr(HWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(EditorEngineLoop));
     }
-    
+
     if (EditorEngineLoop)
     {
         return EditorEngineLoop->WndProc(HWnd, Message, WParam, LParam);
     }
-    
+
     return DefWindowProc(HWnd, Message, WParam, LParam);
 }
 
@@ -31,7 +32,7 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
     switch (Message)
     {
     case WM_DESTROY:
-        
+
         bIsExit = true;
         PostQuitMessage(0);
         return 0;
@@ -69,6 +70,11 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
         return false;
     }
     
+    /* Editor Initialize */
+    Editor.Create(HWindow);
+    Editor.BeginPlay();
+
+    InitializeForTime();
     return true;
 }
 
@@ -76,36 +82,55 @@ int32 FEditorEngineLoop::Run()
 {
     while (!bIsExit)
     {
-        MSG msg;
-        while (PeekMessage(&msg, nullptr, 0, 0,PM_REMOVE))
+        MSG Message;
+        while (PeekMessage(&Message, nullptr, 0, 0,PM_REMOVE))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            TranslateMessage(&Message);
+            DispatchMessage(&Message);
 
-            if (msg.message == WM_QUIT)
+            if (Message.message == WM_QUIT)
             {
                 bIsExit = true;
                 break;
             }
         }
-        
+
         if (bIsExit)
         {
             break;
         }
-        
+
         Tick();
     }
-    
+
     return 0;
 }
 
 void FEditorEngineLoop::Shutdown()
 {
-    //  TODO : Editor Release
+    Editor.Release();
+    //  TODO : Garbage Sweep
 }
 
 void FEditorEngineLoop::Tick()
 {
-    //  TODO : Call Update Functions
+    /* Time Measuring */
+    QueryPerformanceCounter(&CurTime);
+    DeltaTime = static_cast<float>(CurTime.QuadPart - PrevTime.QuadPart);
+    PrevTime = CurTime;
+
+    /* Editor Update */
+    Editor.BeginFrame();
+    Editor.Update();
+    Editor.EndFrame();
+
+    Sleep(0);
+}
+
+void FEditorEngineLoop::InitializeForTime()
+{
+    QueryPerformanceFrequency(&Frequency);
+    QueryPerformanceCounter(&PrevTime);
+    DeltaTime = 0.0f;
+    Accumulator = 0.0f;
 }
