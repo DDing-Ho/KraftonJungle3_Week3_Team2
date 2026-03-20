@@ -3,7 +3,7 @@
 #include "Core/CoreMinimal.h"
 #include "Editor.h" //  이후에 Directory 만들어야 하나?
 
-class FEditorEngineLoop
+class ENGINE_API FEditorEngineLoop
 {
 public:
     bool PreInit(HINSTANCE HInstance, uint32 NCmdShow);
