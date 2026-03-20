@@ -25,12 +25,14 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
 {
     if (ImGui_ImplWin32_WndProcHandler(HWnd, Message, WParam, LParam))
     {
-        return true;
+        return 1;
     }
 
     switch (Message)
     {
     case WM_DESTROY:
+        
+        bIsExit = true;
         PostQuitMessage(0);
         return 0;
     default:
@@ -48,7 +50,10 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
     WCHAR     Title[] = L"Game Tech Lab";
     WNDCLASSW Wndclass = {0, StaticWndProc, 0, 0, 0, 0, 0, 0, 0, WindowClass};
 
-    RegisterClassW(&Wndclass);
+    if (!RegisterClassW(&Wndclass))
+    {
+        return false;
+    }
 
     HWindow = CreateWindowExW(
         0,
