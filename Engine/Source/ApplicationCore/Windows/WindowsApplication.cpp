@@ -24,7 +24,10 @@ namespace Engine::ApplicationCore
         return DefWindowProcW(HWnd, Message, WParam, LParam);
     }
 
-    FWindowsApplication::FWindowsApplication() { GWindowsApplication = this; }
+    FWindowsApplication::FWindowsApplication()
+    {
+        GWindowsApplication = this;
+    }
 
     FWindowsApplication::~FWindowsApplication()
     {
@@ -34,7 +37,10 @@ namespace Engine::ApplicationCore
         }
     }
 
-    FWindowsApplication* FWindowsApplication::Create() { return new FWindowsApplication(); }
+    FWindowsApplication* FWindowsApplication::Create()
+    {
+        return new FWindowsApplication();
+    }
 
     void FWindowsApplication::SetInputSystem(FInputSystem* InInputSystem)
     {

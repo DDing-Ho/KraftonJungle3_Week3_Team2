@@ -1,6 +1,10 @@
 #include "EditorEngineLoop.h"
+
+#include <wrl/client.h>
+
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "ApplicationCore/Windows/WindowsApplication.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, uint32 msg, WPARAM wParam, LPARAM lParam);
 
@@ -58,38 +62,26 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
 {
     (void)NCmdShow;
 
-    WCHAR     WindowClass[] = L"JungleWindowClass";
-    WCHAR     Title[] = L"Game Tech Lab";
-    //  빌드 에러 관련 정리 해야 함
-    // WNDCLASSW Wndclass = {0, StaticWndProc, 0, 0, 0, 0, 0, 0, 0, WindowClass};
-    WNDCLASSW Wndclass = {0, nullptr, 0, 0, 0, 0, 0, 0, 0, WindowClass};
-    
-    if (!RegisterClassW(&Wndclass))
-    {
-        return false;
-    }
+    /* Input System Initialize */
+    InputSystem = new Engine::ApplicationCore::FInputSystem();
 
-    HWindow = CreateWindowExW(
-        0,
-        WindowClass,
-        Title,
-        WS_POPUP | WS_VISIBLE | WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        1920, 1080,
-        nullptr, nullptr, HInstance, this);
+    /* Application Setting */
+#if defined(_WIN32)
+    Application = Engine::ApplicationCore::FWindowsApplication::Create();
+    Application->SetInputSystem(InputSystem);
 
-    if (!HWindow)
-    {
-        return false;
-    }
-    
+    Engine::ApplicationCore::FWindowsWindow WindowsWindow;
+    WindowsWindow.Create(HInstance, L"JungleWindowClass", 1920, 1080);
+    //WindowsWindow.Show();
+
+#else
+
+#endif
+
     /* Editor Initialize */
     Editor = new FEditor();
     Editor->Create(HWindow);
     Editor->Initialize();
-    
-    /* Input System Initialize */
-    InputSystem = new Engine::ApplicationCore::FInputSystem();
 
     InitializeForTime();
     return true;
@@ -128,7 +120,7 @@ void FEditorEngineLoop::ShutDown()
     Editor->Release();
     delete Editor;
     Editor = nullptr;
-    
+
     //  TODO : Garbage Sweep
 }
 
@@ -136,7 +128,7 @@ void FEditorEngineLoop::Tick()
 {
     /* Application Pump Message */
     InputSystem->BeginFrame();
-    
+
     /* Time Measuring */
     DeltaTime = FPlatformTime::Seconds() - PrevTime;
     PrevTime = FPlatformTime::Seconds();
@@ -147,11 +139,11 @@ void FEditorEngineLoop::Tick()
     //  Engine->Tick(DeltaTime);
     /* Editor Update */
     Editor->Tick(InputSystem);
-    
+
     /* Rendering Prepare Stage */
-    
+
     /* Editor Viewport Client */
-    
+
     /* Render End Stage */
 
     FPlatformTime::Sleep(0.f);

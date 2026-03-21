@@ -2,6 +2,7 @@
 
 #include "Core/CoreMinimal.h"
 #include "Editor.h" //  이후에 Directory 만들어야 하나?
+#include "ApplicationCore/GenericPlatform/IApplication.h"
 #include "ApplicationCore/Input/InputSystem.h"
 #include "Launch/EngineLoop.h"
 
@@ -23,6 +24,7 @@ public:
     
 private:
     /* Input System */
+    Engine::ApplicationCore::IApplication * Application = nullptr;
     Engine::ApplicationCore::FInputSystem * InputSystem = nullptr;
     
     /* Editor */

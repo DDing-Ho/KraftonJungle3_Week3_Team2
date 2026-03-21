@@ -18,6 +18,8 @@ namespace Engine::ApplicationCore
         const FInputState & GetInputState() const { return State; }
         
     private:
+        // static LRESULT CALLBACK StaticWndProc(HWND HWnd, UINT Message, WPARAM WParam, LPARAM LParam);
+        
         void UpdateModifiers();
         
     private:

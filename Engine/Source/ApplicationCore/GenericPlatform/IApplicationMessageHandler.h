@@ -1,9 +1,11 @@
 #pragma once
 #include <Core/CoreMinimal.h>
 #include "ApplicationCore/Input/InputEvent.h"
+#include "ApplicationCore/Input/InputTypes.h"
 
 namespace Engine::ApplicationCore
 {
+
     class IApplicationMessageHandler
     {
       public:

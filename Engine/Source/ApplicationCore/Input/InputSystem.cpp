@@ -6,7 +6,27 @@
 
 namespace Engine::ApplicationCore
 {
-    void Engine::ApplicationCore::FInputSystem::BeginFrame()
+    // LRESULT FInputSystem::StaticWndProc(HWND HWnd, UINT Message, WPARAM WParam, LPARAM LParam)
+    // {
+    //     FInputSystem *EditorEngineLoop = reinterpret_cast<FInputSystem *>(GetWindowLongPtr(
+    //         HWnd, GWLP_USERDATA));
+    //
+    //     if (Message == WM_NCCREATE)
+    //     {
+    //         CREATESTRUCTW *CreateStruct = reinterpret_cast<CREATESTRUCTW *>(LParam);
+    //         EditorEngineLoop = reinterpret_cast<FInputSystem *>(CreateStruct->lpCreateParams);
+    //         SetWindowLongPtr(HWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(EditorEngineLoop));
+    //     }
+    //
+    //     if (EditorEngineLoop)
+    //     {
+    //         return EditorEngineLoop->WndProc(Message, WParam, LParam);
+    //     }
+    //
+    //     return DefWindowProc(HWnd, Message, WParam, LParam);
+    // }
+    
+    void FInputSystem::BeginFrame()
     {
         State.BeginFrame();
     }
