@@ -50,7 +50,7 @@ namespace Engine::ApplicationCore
         State.Modifiers.bAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
     }
 
-    void FInputSystem::ProcessWin32Message(UINT Msg, WPARAM WParam, LPARAM LParam)
+    LRESULT FInputSystem::ProcessWin32Message(HWND HWnd,UINT Msg, WPARAM WParam, LPARAM LParam)
     {
         switch (Msg)
         {
@@ -167,5 +167,7 @@ namespace Engine::ApplicationCore
         default:
             break;
         }
+
+        return DefWindowProc(HWnd, Msg, WParam, LParam);
     }
 } // namespace Engine::ApplicationCore

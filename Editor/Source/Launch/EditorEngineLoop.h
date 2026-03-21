@@ -6,6 +6,10 @@
 #include "ApplicationCore/Input/InputSystem.h"
 #include "Launch/EngineLoop.h"
 
+#if defined(_WIN32)
+#include "ApplicationCore/Windows/WindowsApplication.h"
+#endif
+
 class FEditorEngineLoop : public IEngineLoop
 {
 public:
@@ -26,7 +30,12 @@ private:
     /* Input System */
     Engine::ApplicationCore::IApplication * Application = nullptr;
     Engine::ApplicationCore::FInputSystem * InputSystem = nullptr;
-    
+
+    /* Window */
+#if defined(_WIN32)
+    Engine::ApplicationCore::FWindowsWindow * WindowsWindow = nullptr;
+#endif  
+
     /* Editor */
     FEditor * Editor = nullptr;
     

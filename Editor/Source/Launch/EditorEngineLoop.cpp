@@ -4,7 +4,6 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "ApplicationCore/Windows/WindowsApplication.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, uint32 msg, WPARAM wParam, LPARAM lParam);
 
@@ -70,9 +69,9 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
     Application = Engine::ApplicationCore::FWindowsApplication::Create();
     Application->SetInputSystem(InputSystem);
 
-    Engine::ApplicationCore::FWindowsWindow WindowsWindow;
-    WindowsWindow.Create(HInstance, L"JungleWindowClass", 1920, 1080);
-    //WindowsWindow.Show();
+    WindowsWindow = new Engine::ApplicationCore::FWindowsWindow();
+    WindowsWindow->Create(HInstance, L"JungleWindowClass", 1920, 1080);
+    
 
 #else
 
@@ -91,19 +90,6 @@ int32 FEditorEngineLoop::Run()
 {
     while (!bIsExit)
     {
-        // MSG Message;
-        // while (PeekMessage(&Message, nullptr, 0, 0,PM_REMOVE))
-        // {
-        //     TranslateMessage(&Message);
-        //     DispatchMessage(&Message);
-        //
-        //     if (Message.message == WM_QUIT)
-        //     {
-        //         bIsExit = true;
-        //         break;
-        //     }
-        // }
-
         if (bIsExit)
         {
             break;
@@ -121,14 +107,27 @@ void FEditorEngineLoop::ShutDown()
     delete Editor;
     Editor = nullptr;
 
+    WindowsWindow->Destroy();
+    delete WindowsWindow;
+    WindowsWindow = nullptr;
+
+    Application->DestroyApplicationWindow();
+    delete Application;
+    Application = nullptr;
+   
+    delete InputSystem;
+    InputSystem = nullptr;
+
     //  TODO : Garbage Sweep
 }
 
 void FEditorEngineLoop::Tick()
 {
     /* Application Pump Message */
+    Application->PumpMessages();
     InputSystem->BeginFrame();
 
+    
     /* Time Measuring */
     DeltaTime = FPlatformTime::Seconds() - PrevTime;
     PrevTime = FPlatformTime::Seconds();

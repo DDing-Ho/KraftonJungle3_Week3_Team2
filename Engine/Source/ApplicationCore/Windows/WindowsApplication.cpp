@@ -18,8 +18,7 @@ namespace Engine::ApplicationCore
     {
         if (GWindowsApplication != nullptr)
         {
-            GWindowsApplication->GetInputSystem()->ProcessWin32Message(Message, WParam, LParam);
-            return 0;
+            return GWindowsApplication->GetInputSystem()->ProcessWin32Message(HWnd, Message, WParam, LParam);
         }
         return DefWindowProcW(HWnd, Message, WParam, LParam);
     }
