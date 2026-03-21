@@ -1,7 +1,12 @@
 #pragma once
 
-#include "ApplicationCore/Input/InputRouter.h"
 #include "Core/CoreMinimal.h"
+
+#include "ApplicationCore/Input/InputRouter.h"
+#include "ApplicationCore/Input/InputSystem.h"
+#include "Input/EditorGlobalContext.h"
+#include "Input/GizmoInputContext.h"
+#include "Input/ViewPortInputContext.h"
 #include "Renderer/Scene.h"
 
 class FEditor
@@ -11,8 +16,8 @@ public:
     void Create(HWND);
     void Release();
     
-    void BeginPlay();
-    void Tick(float DeltaTime);
+    void Initialize();
+    void Tick(Engine::ApplicationCore::FInputSystem * InputSystem);
     
     void OnWindowResized(float Width, float Height);
     void SetMainLoopFPS(float FPS) { CurFPS = FPS; }
@@ -28,8 +33,13 @@ public:
     
     
 private:
-    /* Input System */
-    Engine::ApplicationCore::FInputRouter FInputRouter;
+    /* Input Routing */
+    Engine::ApplicationCore::FInputRouter InputRouter;
+    
+    /* Input Contexts */
+    FEditorGlobalContext EditorGlobalContext;
+    FViewPortInputContext ViewPortInputContext;
+    FGizmoInputContext GizmoInputContext;
     
     /* Panel */
     

@@ -5,11 +5,11 @@
 
 namespace Engine::ApplicationCore
 {
-    class ENGINE_API InputSystem
+    class ENGINE_API FInputSystem
     {
     public:
-        InputSystem() = default;
-        ~InputSystem() = default;
+        FInputSystem() = default;
+        ~FInputSystem() = default;
         
         void BeginFrame();
         void ProcessingWin32Message(UINT Msg, WPARAM WParam, LPARAM LParam);
@@ -22,6 +22,7 @@ namespace Engine::ApplicationCore
         
     private:
         FInputState State;
+        //  TODO : Build 에러 방지
         TQueue<FInputEvent> EventQueue;
     };    
 }

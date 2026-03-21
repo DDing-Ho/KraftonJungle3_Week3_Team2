@@ -7,3 +7,8 @@ bool FEditorGlobalContext::HandleEvent(const FInputEvent& Event,
     //  Scale, Translate, Rotate Model, Focus Selection 등
     //  delete 처리 및 Space key 바인딩
 }
+
+void FEditorGlobalContext::Tick(const Engine::ApplicationCore::FInputState& State)
+{
+    
+}

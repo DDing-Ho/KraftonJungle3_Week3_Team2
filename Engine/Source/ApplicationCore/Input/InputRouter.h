@@ -13,7 +13,7 @@ namespace Engine::ApplicationCore
         
         void AddContext(IInputContext * Context);
         bool RouteEvent(const FInputEvent & Event, const FInputState & State);
-        bool TickContexts(const FInputState & State);
+        void TickContexts(const FInputState & State);
         
     private:
         TArray<IInputContext *> Contexts;

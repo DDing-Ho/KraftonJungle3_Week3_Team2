@@ -29,7 +29,7 @@ bool Engine::ApplicationCore::FInputRouter::RouteEvent(const FInputEvent& Event,
     return false;
 }
 
-bool Engine::ApplicationCore::FInputRouter::TickContexts(const FInputState& State)
+void Engine::ApplicationCore::FInputRouter::TickContexts(const FInputState& State)
 {
     for (const auto & Context : Contexts)
     {
