@@ -9,10 +9,14 @@ namespace Engine::ApplicationCore
     class IInputContext
     {
       public:
+        constexpr IInputContext() = default;
         virtual ~IInputContext() = default;
 
         virtual int  GetPriority() const = 0;
         virtual bool HandleEvent(const FInputEvent& Event, const FInputState& State) = 0;
         virtual void Tick(const FInputState& State) {}
+
+        private:
+        int Priority{0};
     };
 } // namespace Engine::ApplicationCore
