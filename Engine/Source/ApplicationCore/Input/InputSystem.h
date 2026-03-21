@@ -1,16 +1,16 @@
 #pragma once
 
 #include "Core/CoreMinimal.h"
-#include "IInputContext.h"
+#include "InputContext.h"
 
 namespace Engine::ApplicationCore
 {
     class ENGINE_API FInputSystem
     {
-    public:
-        FInputSystem() = default;
+      public:
+        constexpr FInputSystem() = default;
         ~FInputSystem() = default;
-        
+
         void BeginFrame();
         LRESULT ProcessWin32Message(HWND HWnd, UINT Msg, WPARAM WParam, LPARAM LParam);
         

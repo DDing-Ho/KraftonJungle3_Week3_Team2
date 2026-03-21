@@ -1,21 +1,21 @@
 #pragma once
 
 #include "Core/CoreMinimal.h"
-#include "ApplicationCore/Input/IInputContext.h"
+#include "ApplicationCore/Input/InputContext.h"
 
 namespace Engine::ApplicationCore
 {
     class ENGINE_API FInputRouter
     {
-      public:
-        FInputRouter() = default;
+    public:
+        constexpr FInputRouter() = default;
         ~FInputRouter() = default;
-        
+
         void AddContext(IInputContext* Context);
         bool RouteEvent(const FInputEvent& Event, const FInputState& State);
         void TickContexts(const FInputState& State);
 
       private:
-        TArray<IInputContext *> Contexts;
+        std::vector<IInputContext*> Contexts;
     };
 } // namespace Engine::ApplicationCore
