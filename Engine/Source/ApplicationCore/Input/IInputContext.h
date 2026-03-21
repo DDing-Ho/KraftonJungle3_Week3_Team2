@@ -1,10 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "ApplicationCore/Input/InputEvent.h"
 #include "ApplicationCore/Input/InputState.h"
-
-//  TODO : 전방 선언 지우기
-struct FInputEvent;
 
 namespace Engine::ApplicationCore
 {
