@@ -31,11 +31,23 @@
     <Filter Include="Source\Engine">
       <UniqueIdentifier>{b3c5f926-6c8b-bd77-5999-bbaf53eba42b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Launch">
+      <UniqueIdentifier>{3ff2eba7-1724-b5b0-ebd8-4a23450e4f65}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Renderer">
       <UniqueIdentifier>{b4935566-c566-3c8c-ae88-5cc13eba9d31}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\ThirdParty">
       <UniqueIdentifier>{b8e8bd27-1e61-2aa5-0088-7e70dd22287c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ApplicationCore\GenericPlatform">
+      <UniqueIdentifier>{387b5035-7247-ab88-2751-c494bed9266f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ApplicationCore\Input">
+      <UniqueIdentifier>{658e0f79-2d67-eb9d-c8d8-0c89acb03947}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ApplicationCore\Windows">
+      <UniqueIdentifier>{2548a85b-9fa1-e3d9-af0b-dee02015da10}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Core\Containers">
       <UniqueIdentifier>{912017d8-8df8-694a-9f3f-b99826c544c4}</UniqueIdentifier>
@@ -70,6 +82,9 @@
     <Filter Include="Source\Renderer\D3D11">
       <UniqueIdentifier>{7d49e81e-9894-3ffe-a35e-b64d3056e0ba}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Renderer\RenderAsset">
+      <UniqueIdentifier>{37df3f3d-06b0-91a9-da82-c1929332f7ef}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Renderer\Types">
       <UniqueIdentifier>{2a470593-b470-7a69-2874-61b9dc3a78a3}</UniqueIdentifier>
     </Filter>
@@ -78,6 +93,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\ApplicationCore\Windows\WindowsApplication.cpp">
+      <Filter>Source\ApplicationCore\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ApplicationCore\Windows\WindowsWindow.cpp">
+      <Filter>Source\ApplicationCore\Windows</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Core\CoreGlobals.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
@@ -86,6 +107,9 @@
     </ClCompile>
     <ClCompile Include="Source\Core\Geometry\Transform.cpp">
       <Filter>Source\Core\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Core\HAL\PlatformTime.cpp">
+      <Filter>Source\Core\HAL</Filter>
     </ClCompile>
     <ClCompile Include="Source\Core\Math\Color.cpp">
       <Filter>Source\Core\Math</Filter>
@@ -108,6 +132,9 @@
     <ClCompile Include="Source\Core\Math\Vector4.cpp">
       <Filter>Source\Core\Math</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Core\Path.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CoreUObject\Object.cpp">
       <Filter>Source\CoreUObject</Filter>
     </ClCompile>
@@ -115,6 +142,12 @@
       <Filter>Source\CoreUObject</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Asset\Asset.cpp">
+      <Filter>Source\Engine\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Asset\AssetLoader.cpp">
+      <Filter>Source\Engine\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Asset\AssetManager.cpp">
       <Filter>Source\Engine\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\CameraComponent.cpp">
@@ -144,10 +177,10 @@
     <ClCompile Include="Source\Engine\Game\Actor.cpp">
       <Filter>Source\Engine\Game</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Game\Actor.cpp">
-      <Filter>Source\Engine\Game</Filter>
+    <ClCompile Include="Source\Engine\ViewPort\Viewport.cpp">
+      <Filter>Source\Engine\ViewPort</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Core\HAL\PlatformTime.cpp" />
+    <ClCompile Include="Source\Renderer\Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Resources\Sphere.h">
@@ -158,6 +191,21 @@
     </ClInclude>
     <ClInclude Include="Resources\VertexSimple.h">
       <Filter>Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ApplicationCore\GenericPlatform\IApplication.h">
+      <Filter>Source\ApplicationCore\GenericPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ApplicationCore\GenericPlatform\IApplicationMessageHandler.h">
+      <Filter>Source\ApplicationCore\GenericPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ApplicationCore\Input\InputEvent.h">
+      <Filter>Source\ApplicationCore\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ApplicationCore\Windows\WindowsApplication.h">
+      <Filter>Source\ApplicationCore\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ApplicationCore\Windows\WindowsWindow.h">
+      <Filter>Source\ApplicationCore\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Source\Core\Containers\Array.h">
       <Filter>Source\Core\Containers</Filter>
@@ -261,6 +309,9 @@
     <ClInclude Include="Source\Core\Misc\Name.h">
       <Filter>Source\Core\Misc</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Core\Path.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Source\CoreUObject\Object.h">
       <Filter>Source\CoreUObject</Filter>
     </ClInclude>
@@ -268,6 +319,12 @@
       <Filter>Source\CoreUObject</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Asset\Asset.h">
+      <Filter>Source\Engine\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Asset\AssetLoader.h">
+      <Filter>Source\Engine\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Asset\AssetManager.h">
       <Filter>Source\Engine\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\CameraComponent.h">
@@ -297,8 +354,11 @@
     <ClInclude Include="Source\Engine\Game\Actor.h">
       <Filter>Source\Engine\Game</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Game\Actor.h">
-      <Filter>Source\Engine\Game</Filter>
+    <ClInclude Include="Source\Engine\ViewPort\Viewport.h">
+      <Filter>Source\Engine\ViewPort</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Launch\EngineLoop.h">
+      <Filter>Source\Launch</Filter>
     </ClInclude>
     <ClInclude Include="Source\Renderer\D3D11\D3D11Common.h">
       <Filter>Source\Renderer\D3D11</Filter>
