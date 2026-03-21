@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ApplicationCore/Input/InputEvent.h"
 #include "ApplicationCore/Input/InputTypes.h"
 
 namespace Engine::ApplicationCore
@@ -14,15 +13,15 @@ namespace Engine::ApplicationCore
         int32 MouseY = 0;
         int32 MouseDeltaX = 0;
         int32 MouseDeltaY = 0;
-        int32 WheelDeltaX = 0;
+        int32 WheelDelta = 0;
         
-        // FModifierKeysState Modifiers;
+        FModifierKeysState Modifiers;
         
         void BeginFrame()
         {
             MouseDeltaX = 0;
             MouseDeltaY = 0;
-            WheelDeltaX = 0;
+            WheelDelta = 0;
         }
         
         bool IsKeyDown(EKey Key) const

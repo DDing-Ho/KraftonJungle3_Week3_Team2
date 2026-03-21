@@ -11,7 +11,7 @@ public:
     
     //  현재는 literal로 넣어 놓음
     int32 GetPriority() const override { return 10; }
-    bool HandleEvent(const FInputEvent & Event, 
-        const Engine::ApplicationCore::FInputState & State) override;
+    bool  HandleEvent(const Engine::ApplicationCore::FInputEvent & Event, 
+        const Engine::ApplicationCore::FInputState &               State) override;
     void Tick(const Engine::ApplicationCore::FInputState& State) override;
 };

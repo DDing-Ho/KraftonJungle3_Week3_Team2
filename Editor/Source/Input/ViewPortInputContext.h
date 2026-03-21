@@ -12,8 +12,8 @@ public:
     
     //  현재는 Literal 저장
     int32 GetPriority() const override { return 50; }
-    bool HandleEvent(const FInputEvent & Event, 
-        const Engine::ApplicationCore::FInputState & State) override;
+    bool  HandleEvent(const Engine::ApplicationCore::FInputEvent & Event, 
+        const Engine::ApplicationCore::FInputState &               State) override;
     void Tick(const Engine::ApplicationCore::FInputState & State) override;
     
 private:

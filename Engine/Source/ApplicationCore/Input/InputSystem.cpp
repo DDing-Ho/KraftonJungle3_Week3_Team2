@@ -54,7 +54,7 @@ namespace Engine::ApplicationCore
             else if (WParam == VK_DELETE)
                 E.Key = EKey::Delete;
 
-            State.bKeysDown[static_cast<int32>(E.Key)] = true;
+            State.KeysDown[static_cast<int32>(E.Key)] = true;
             EventQueue.push(E);
             break;
         }
@@ -77,13 +77,13 @@ namespace Engine::ApplicationCore
             else if (WParam == VK_DELETE)
                 E.Key = EKey::Delete;
 
-            State.bKeysDown[static_cast<int32>(E.Key)] = false;
+            State.KeysDown[static_cast<int32>(E.Key)] = false;
             EventQueue.push(E);
             break;
         }
         case WM_LBUTTONDOWN:
         {
-            State.bKeysDown[static_cast<int32>(EKey::MouseLeft)] = true;
+            State.KeysDown[static_cast<int32>(EKey::MouseLeft)] = true;
 
             FInputEvent E;
             E.Type = EInputEventType::MouseButtonDown;
@@ -95,7 +95,7 @@ namespace Engine::ApplicationCore
         }
         case WM_LBUTTONUP:
         {
-            State.bKeysDown[static_cast<int32>(EKey::MouseLeft)] = false;
+            State.KeysDown[static_cast<int32>(EKey::MouseLeft)] = false;
 
             FInputEvent E;
             E.Type = EInputEventType::MouseButtonUp;
@@ -106,11 +106,11 @@ namespace Engine::ApplicationCore
             break;
         }
         case WM_RBUTTONDOWN:
-            State.bKeysDown[static_cast<int32>(EKey::MouseRight)] = true;
+            State.KeysDown[static_cast<int32>(EKey::MouseRight)] = true;
             break;
 
         case WM_RBUTTONUP:
-            State.bKeysDown[static_cast<int32>(EKey::MouseRight)] = false;
+            State.KeysDown[static_cast<int32>(EKey::MouseRight)] = false;
             break;
 
         case WM_MOUSEMOVE:

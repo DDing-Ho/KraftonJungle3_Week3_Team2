@@ -12,7 +12,7 @@ namespace Engine::ApplicationCore
         ~FInputSystem() = default;
         
         void BeginFrame();
-        void ProcessingWin32Message(UINT Msg, WPARAM WParam, LPARAM LParam);
+        void ProcessWin32Message(UINT Msg, WPARAM WParam, LPARAM LParam);
         
         bool PollEvent(FInputEvent & OutEvent);
         const FInputState & GetInputState() const { return State; }

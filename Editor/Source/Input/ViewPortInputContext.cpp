@@ -1,7 +1,7 @@
 ﻿#include "ViewPortInputContext.h"
 
-bool FViewPortInputContext::HandleEvent(const FInputEvent& Event,
-    const Engine::ApplicationCore::FInputState& State)
+bool FViewPortInputContext::HandleEvent(const Engine::ApplicationCore::FInputEvent& Event,
+    const Engine::ApplicationCore::FInputState&                                     State)
 {
     //  TODO : Event Type 관련해서 Event 분기 처리 하기
     return false;
