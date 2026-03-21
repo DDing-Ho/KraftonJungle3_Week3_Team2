@@ -46,6 +46,7 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
         break;
     case WM_SIZING:
         //  Render for Re-Sizing
+        break;
     default:
         break;
     }
