@@ -1,4 +1,6 @@
 #include "EditorEngineLoop.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, uint32 msg, WPARAM wParam, LPARAM lParam);
 
@@ -41,6 +43,7 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
         {
             Editor->OnWindowResized(LOWORD(LParam), HIWORD(LParam));    
         }
+        break;
     case WM_SIZING:
         //  Render for Re-Sizing
     default:
