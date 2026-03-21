@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Core/CoreMinimal.h"
-#include "ApplicationCore/Input/IInputContext.h"
+#include "ApplicationCore/Input/InputContext.h"
 
 class FGizmoInputContext : public Engine::ApplicationCore::IInputContext
 {

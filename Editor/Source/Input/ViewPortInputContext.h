@@ -2,7 +2,7 @@
 
 #include "Core/CoreMinimal.h"
 
-#include "ApplicationCore/Input/IInputContext.h"
+#include "ApplicationCore/Input/InputContext.h"
 
 class FViewPortInputContext : public Engine::ApplicationCore::IInputContext
 {
