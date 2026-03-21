@@ -41,6 +41,7 @@ LRESULT FEditorEngineLoop::WndProc(HWND HWnd, uint32 Message, WPARAM WParam, LPA
         {
             Editor->OnWindowResized(LOWORD(LParam), HIWORD(LParam));    
         }
+        break;
     case WM_SIZING:
         //  Render for Re-Sizing
     default:
