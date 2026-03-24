@@ -10,8 +10,12 @@
 #include "Renderer/Types/ViewMode.h"
 #include "Resources/Mesh/MeshPrimitiveTopology.h"
 
+#include <memory>
+
 class FD3D11RHI;
+class FD3D11GpuProfiler;
 class FSceneView;
+class FManualMemoryCategoryHandle;
 
 struct FVertexSimple;
 
@@ -45,8 +49,12 @@ class FD3D11MeshBatchRenderer
     static constexpr uint32 MaxInstanceCapacity = 4096;
 
   public:
+    FD3D11MeshBatchRenderer();
+    ~FD3D11MeshBatchRenderer();
+
     bool Initialize(FD3D11RHI* InRHI);
     void Shutdown();
+    void SetGpuProfiler(FD3D11GpuProfiler* InGpuProfiler) { GpuProfiler = InGpuProfiler; }
 
     void BeginFrame(const FSceneView* InSceneView, EViewModeIndex InViewMode,
                     bool bInUseInstancing);
@@ -93,7 +101,9 @@ class FD3D11MeshBatchRenderer
     const FBasicMeshResource* GetBasicMeshResource(EBasicMeshType InType) const;
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI*        RHI = nullptr;
+    FD3D11GpuProfiler* GpuProfiler = nullptr;
     const FSceneView* CurrentSceneView = nullptr;
     EViewModeIndex    ViewMode = EViewModeIndex::VMI_Lit;
     bool              bUseInstancing = true;

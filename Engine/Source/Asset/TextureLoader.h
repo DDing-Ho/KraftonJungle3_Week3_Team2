@@ -6,6 +6,7 @@
 
 struct FTextureResource;
 struct FDecodedImage;
+class FManualMemoryCategoryHandle;
 
 // Decode cache 값
 struct FDecodedImage
@@ -20,6 +21,7 @@ class ENGINE_API FTextureLoader : public IAssetLoader
 {
   public:
     explicit FTextureLoader(FD3D11RHI* InRHI);
+    ~FTextureLoader();
 
     bool       CanLoad(const FWString& Path, const FAssetLoadParams& Params) const override;
     EAssetType GetAssetType() const override;
@@ -36,6 +38,7 @@ class ENGINE_API FTextureLoader : public IAssetLoader
                                FTextureResource& OutResource);
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle>                                         MemoryTrackHandle;
     FD3D11RHI*                                                                        RHI = nullptr;
     TMap<FString, std::shared_ptr<FDecodedImage>>                                     DecodeCache;
     TMap<FTextureBuildKey, std::shared_ptr<FTextureResource>, FTextureBuildKeyHasher> ResourceCache;

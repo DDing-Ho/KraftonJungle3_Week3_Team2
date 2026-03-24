@@ -1,9 +1,19 @@
 #include "Core/CoreMinimal.h"
+#include "Engine/MemoryProfiler.h"
 #include "NameSubsystem.h"
 
 namespace Engine::Core::Misc
 {
     FNameSubsystem* FNameSubsystem::Instance{nullptr};
+
+    FNameSubsystem::FNameSubsystem()
+        : MemoryTrackHandle(
+              std::make_unique<FManualMemoryCategoryHandle>("Core/FNameSubsystem",
+                                                            sizeof(FNameSubsystem)))
+    {
+    }
+
+    FNameSubsystem::~FNameSubsystem() = default;
 
     FNameSubsystem& FNameSubsystem::Get()
     {

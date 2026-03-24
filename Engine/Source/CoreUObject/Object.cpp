@@ -1,15 +1,21 @@
 #include "Core/CoreMinimal.h"
 #include "Engine/EngineStatics.h"
+#include "Engine/MemoryProfiler.h"
 #include "Object.h"
 
 TArray<UObject*> GUObjectArray;
 
 namespace
 {
-    TMap<const void*, const char*>& GetAllocatedObjectTypeNames()
+    struct FAllocatedObjectInfo
     {
-        static TMap<const void*, const char*> AllocatedObjectTypeNames;
-        return AllocatedObjectTypeNames;
+        const char* TypeName = "UObject";
+    };
+
+    TMap<const void*, FAllocatedObjectInfo>& GetAllocatedObjectInfos()
+    {
+        static TMap<const void*, FAllocatedObjectInfo> AllocatedObjectInfos;
+        return AllocatedObjectInfos;
     }
 
     const char* ResolveAllocatedObjectTypeName(const UObject* Object)
@@ -19,11 +25,11 @@ namespace
             return "UObject";
         }
 
-        auto& TypeNames = GetAllocatedObjectTypeNames();
-        const auto It = TypeNames.find(Object);
-        if (It != TypeNames.end() && It->second != nullptr)
+        auto& Infos = GetAllocatedObjectInfos();
+        const auto It = Infos.find(Object);
+        if (It != Infos.end() && It->second.TypeName != nullptr)
         {
-            return It->second;
+            return It->second.TypeName;
         }
 
         return "UObject";
@@ -61,8 +67,6 @@ UObject::~UObject()
 	{
 		GUObjectArray[InternalIndex] = nullptr;
 	}
-
-    GetAllocatedObjectTypeNames().erase(this);
 }
 
 void* UObject::operator new(size_t Size)
@@ -79,9 +83,10 @@ void* UObject::AllocateObject(size_t Size, const char* InTypeName)
 {
 	UEngineStatics::TotalAllocatedBytes += static_cast<uint32>(Size);
 	UEngineStatics::TotalAllocationCount++;
+    FMemoryProfiler::Get().RegisterUObjectAllocation(InTypeName, Size);
 
 	void* Pointer = ::operator new(Size);
-    GetAllocatedObjectTypeNames()[Pointer] = InTypeName != nullptr ? InTypeName : "UObject";
+    GetAllocatedObjectInfos()[Pointer] = {.TypeName = InTypeName != nullptr ? InTypeName : "UObject"};
 	return Pointer;
 }
 
@@ -94,6 +99,17 @@ void UObject::FreeObject(void* Pointer, size_t Size)
 
 	UEngineStatics::TotalAllocatedBytes -= static_cast<uint32>(Size);
 	UEngineStatics::TotalAllocationCount--;
+
+    const char* TypeName = "UObject";
+    auto&       Infos = GetAllocatedObjectInfos();
+    const auto  It = Infos.find(Pointer);
+    if (It != Infos.end() && It->second.TypeName != nullptr)
+    {
+        TypeName = It->second.TypeName;
+        Infos.erase(It);
+    }
+
+    FMemoryProfiler::Get().RegisterUObjectFree(TypeName, Size);
 
 	::operator delete(Pointer, Size);
 }

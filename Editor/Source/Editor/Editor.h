@@ -32,7 +32,9 @@ struct FPanelDescriptor;
 class AActor;
 class UObject;
 class FD3D11RHI;
+class FRendererModule;
 class UAssetManager;
+class FManualMemoryCategoryHandle;
 
 enum class EDeferredSceneActionType
 {
@@ -66,13 +68,17 @@ struct FSceneDocumentState
 class FEditor
 {
   public:
+    FEditor();
+    ~FEditor();
+
     void Create();
     void Release();
 
     void Initialize();
     void Tick(float DeltaTime, Engine::ApplicationCore::FInputSystem* InputSystem);
     void SetChromeHost(IEditorChromeHost* InChromeHost);
-    void SetRuntimeServices(FD3D11RHI* InRHI, UAssetManager* InAssetManager);
+    void SetRuntimeServices(FRendererModule* InRenderer, FD3D11RHI* InRHI,
+                            UAssetManager* InAssetManager);
 
     void OnWindowResized(float Width, float Height);
     void SetMainLoopFPS(float FPS)
@@ -93,6 +99,7 @@ class FEditor
     const FSceneRenderData&      GetSceneRenderData() const { return SceneRenderData; }
     FEditorViewportClient&       GetViewportClient() { return ViewportClient; }
     const FEditorViewportClient& GetViewportClient() const { return ViewportClient; }
+    FRendererModule*             GetRendererModule() const { return EditorContext.Renderer; }
 
     void DrawPanel();
 
@@ -154,4 +161,5 @@ class FEditor
     float CurFPS = 0.0f;
     bool  bRequestOpenAboutPopup = false;
     bool  bAboutPopupOpen = false;
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
 };

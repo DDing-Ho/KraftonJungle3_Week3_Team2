@@ -2,6 +2,16 @@
 
 #include <cwchar>
 
+#include "Engine/MemoryProfiler.h"
+
+FPanelManager::FPanelManager()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>("Editor/FPanelManager",
+                                                                      sizeof(FPanelManager)))
+{
+}
+
+FPanelManager::~FPanelManager() = default;
+
 void FPanelManager::Initialize(FEditorContext* InContext)
 {
     // 이후 생성되는 모든 패널이 같은 EditorContext를 참조하도록 저장합니다.

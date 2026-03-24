@@ -1,4 +1,5 @@
 #include "Core/CoreMinimal.h"
+#include "Engine/MemoryProfiler.h"
 #include "SubUVAtlasLoader.h"
 
 #include <algorithm>
@@ -161,8 +162,26 @@ namespace
 }
 
 FSubUVAtlasLoader::FSubUVAtlasLoader(FD3D11RHI* InRHI)
-    : RHI(InRHI)
+    : MemoryTrackHandle(
+          std::make_unique<FManualMemoryCategoryHandle>("Asset/FSubUVAtlasLoader",
+                                                        sizeof(FSubUVAtlasLoader))),
+      RHI(InRHI)
 {
+}
+
+FSubUVAtlasLoader::~FSubUVAtlasLoader()
+{
+    for (const auto& [_, Resource] : ResourceCache)
+    {
+        if (Resource)
+        {
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->SRV.Get());
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->Texture.Get());
+        }
+    }
+
+    ResourceCache.clear();
+    DecodeCache.clear();
 }
 
 bool FSubUVAtlasLoader::CanLoad(const FWString& Path, const FAssetLoadParams& Params) const
@@ -559,8 +578,8 @@ bool FSubUVAtlasLoader::CreateTextureResource(const FDecodedAtlasImage& DecodedI
     InitialData.SysMemPitch = RowPitch;
 
     TComPtr<ID3D11Texture2D> Texture;
-    HRESULT Hr = RHI->GetDevice()->CreateTexture2D(&TextureDesc, &InitialData, &Texture);
-    if (FAILED(Hr))
+    if (!RHI->CreateTexture2D(TextureDesc, &InitialData, Texture.GetAddressOf(),
+                              EGpuResourceKind::Texture2D))
     {
         return false;
     }
@@ -572,9 +591,9 @@ bool FSubUVAtlasLoader::CreateTextureResource(const FDecodedAtlasImage& DecodedI
     SRVDesc.Texture2D.MipLevels = 1;
 
     TComPtr<ID3D11ShaderResourceView> SRV;
-    Hr = RHI->GetDevice()->CreateShaderResourceView(Texture.Get(), &SRVDesc, &SRV);
-    if (FAILED(Hr))
+    if (!RHI->CreateShaderResourceView(Texture.Get(), &SRVDesc, SRV.GetAddressOf()))
     {
+        FMemoryProfiler::Get().UnregisterGpuResource(Texture.Get());
         return false;
     }
 

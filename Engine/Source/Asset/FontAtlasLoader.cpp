@@ -1,4 +1,5 @@
 #include "Core/CoreMinimal.h"
+#include "Engine/MemoryProfiler.h"
 #include "FontAtlasLoader.h"
 
 #include <algorithm>
@@ -151,7 +152,28 @@ namespace
     }
 } // namespace
 
-FFontAtlasLoader::FFontAtlasLoader(FD3D11RHI* InRHI) : RHI(InRHI) {}
+FFontAtlasLoader::FFontAtlasLoader(FD3D11RHI* InRHI)
+    : MemoryTrackHandle(
+          std::make_unique<FManualMemoryCategoryHandle>("Asset/FFontAtlasLoader",
+                                                        sizeof(FFontAtlasLoader))),
+      RHI(InRHI)
+{
+}
+
+FFontAtlasLoader::~FFontAtlasLoader()
+{
+    for (const auto& [_, Resource] : ResourceCache)
+    {
+        if (Resource)
+        {
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->SRV.Get());
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->Texture.Get());
+        }
+    }
+
+    ResourceCache.clear();
+    DecodeCache.clear();
+}
 
 bool FFontAtlasLoader::CanLoad(const FWString& Path, const FAssetLoadParams& Params) const
 {
@@ -498,8 +520,8 @@ bool FFontAtlasLoader::CreateTextureResource(const FDecodedAtlasImage& DecodedIm
     InitialData.SysMemPitch = RowPitch;
 
     TComPtr<ID3D11Texture2D> Texture;
-    HRESULT Hr = RHI->GetDevice()->CreateTexture2D(&TextureDesc, &InitialData, &Texture);
-    if (FAILED(Hr))
+    if (!RHI->CreateTexture2D(TextureDesc, &InitialData, Texture.GetAddressOf(),
+                              EGpuResourceKind::Texture2D))
     {
         return false;
     }
@@ -511,9 +533,9 @@ bool FFontAtlasLoader::CreateTextureResource(const FDecodedAtlasImage& DecodedIm
     SRVDesc.Texture2D.MipLevels = 1;
 
     TComPtr<ID3D11ShaderResourceView> SRV;
-    Hr = RHI->GetDevice()->CreateShaderResourceView(Texture.Get(), &SRVDesc, &SRV);
-    if (FAILED(Hr))
+    if (!RHI->CreateShaderResourceView(Texture.Get(), &SRVDesc, SRV.GetAddressOf()))
     {
+        FMemoryProfiler::Get().UnregisterGpuResource(Texture.Get());
         return false;
     }
 

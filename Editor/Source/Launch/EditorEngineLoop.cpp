@@ -80,7 +80,7 @@ bool FEditorEngineLoop::PreInit(HINSTANCE HInstance, uint32 NCmdShow)
     AssetManager->RegisterLoader(TextureAssetLoader);
     AssetManager->RegisterLoader(FontAssetLoader);
     AssetManager->RegisterLoader(SubUVAtlasAssetLoader);
-    Editor->SetRuntimeServices(&Renderer->GetRHI(), AssetManager);
+    Editor->SetRuntimeServices(Renderer, &Renderer->GetRHI(), AssetManager);
 
     ImGui::CreateContext();
     ImGuiIO& IO = ImGui::GetIO();
@@ -139,7 +139,7 @@ void FEditorEngineLoop::ShutDown()
 
     if (Editor != nullptr)
     {
-        Editor->SetRuntimeServices(nullptr, nullptr);
+        Editor->SetRuntimeServices(nullptr, nullptr, nullptr);
     }
 
     delete FontAssetLoader;

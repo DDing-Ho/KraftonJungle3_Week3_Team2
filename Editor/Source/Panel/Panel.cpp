@@ -1,5 +1,10 @@
 #include "Panel.h"
 
+#include "Engine/MemoryProfiler.h"
+
+IPanel::IPanel() = default;
+IPanel::~IPanel() = default;
+
 void IPanel::Initialize(FEditorContext* InContext, IPanelService* InPanelService)
 {
 	// 패널이 필요한 에디터 상태와 다른 패널 제어 인터페이스를 저장합니다.
@@ -45,4 +50,14 @@ void IPanel::ToggleOpen()
 {
 	// 현재 상태를 반전시키는 가장 단순한 열기/닫기 진입점입니다.
 	SetOpen(!bOpen);
+}
+
+void IPanel::TrackMemoryCategory(const FString& InCategory, size_t InSize)
+{
+    if (MemoryTrackHandle == nullptr)
+    {
+        MemoryTrackHandle = std::make_unique<FManualMemoryCategoryHandle>();
+    }
+
+    MemoryTrackHandle->Track(InCategory, InSize);
 }

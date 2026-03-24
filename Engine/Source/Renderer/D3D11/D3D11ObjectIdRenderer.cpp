@@ -1,5 +1,6 @@
 #include "Renderer/D3D11/D3D11ObjectIdRenderer.h"
 
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/SceneView.h"
 #include "Resources/Mesh/Cone.h"
@@ -10,9 +11,16 @@
 #include "Resources/Mesh/Sphere.h"
 #include "Resources/Mesh/Triangle.h"
 #include "Resources/Mesh/VertexSimple.h"
+#include "Engine/MemoryProfiler.h"
 
 namespace
 {
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+
     struct alignas(16) FObjectIdConstants
     {
         FMatrix MVP;
@@ -21,7 +29,38 @@ namespace
         uint32  Padding1 = 0;
         uint32  Padding2 = 0;
     };
+
+    FString GetObjectIdMeshProfileLabel(EBasicMeshType InType)
+    {
+        switch (InType)
+        {
+        case EBasicMeshType::Cube:
+            return "ObjectId/Cube";
+        case EBasicMeshType::Quad:
+            return "ObjectId/Quad";
+        case EBasicMeshType::Triangle:
+            return "ObjectId/Triangle";
+        case EBasicMeshType::Sphere:
+            return "ObjectId/Sphere";
+        case EBasicMeshType::Cone:
+            return "ObjectId/Cone";
+        case EBasicMeshType::Cylinder:
+            return "ObjectId/Cylinder";
+        case EBasicMeshType::Ring:
+            return "ObjectId/Ring";
+        default:
+            return "ObjectId/Unknown";
+        }
+    }
 } // namespace
+
+FD3D11ObjectIdRenderer::FD3D11ObjectIdRenderer()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>(
+          "Renderer/FD3D11ObjectIdRenderer", sizeof(FD3D11ObjectIdRenderer)))
+{
+}
+
+FD3D11ObjectIdRenderer::~FD3D11ObjectIdRenderer() = default;
 
 bool FD3D11ObjectIdRenderer::Initialize(FD3D11RHI* InRHI)
 {
@@ -31,6 +70,7 @@ bool FD3D11ObjectIdRenderer::Initialize(FD3D11RHI* InRHI)
     }
 
     RHI = InRHI;
+    GpuProfiler = nullptr;
 
     if (!CreateShaders())
     {
@@ -72,13 +112,13 @@ void FD3D11ObjectIdRenderer::Shutdown()
     ReleasePickResources();
     ReleaseBasicMeshes();
 
-    DepthStencilState.Reset();
-    RasterizerState.Reset();
+    UntrackComResource(DepthStencilState);
+    UntrackComResource(RasterizerState);
 
-    ConstantBuffer.Reset();
-    InputLayout.Reset();
-    PixelShader.Reset();
-    VertexShader.Reset();
+    UntrackComResource(ConstantBuffer);
+    UntrackComResource(InputLayout);
+    UntrackComResource(PixelShader);
+    UntrackComResource(VertexShader);
 
     CurrentSceneView = nullptr;
     MouseX = -1;
@@ -86,6 +126,7 @@ void FD3D11ObjectIdRenderer::Shutdown()
 
     TargetWidth = 0;
     TargetHeight = 0;
+    GpuProfiler = nullptr;
     RHI = nullptr;
 }
 
@@ -197,6 +238,9 @@ bool FD3D11ObjectIdRenderer::RenderAndReadBack(uint32& OutPickId)
             continue;
         }
 
+        const FGpuProfileScopeGuard ScopeGuard(
+            GpuProfiler, GetObjectIdMeshProfileLabel(Item.MeshType), "ObjectId",
+            EGpuProfileDrawType::DrawIndexed, MeshResource->IndexCount, 1);
         RHI->DrawIndexed(MeshResource->IndexCount, 0, 0);
     }
 
@@ -246,12 +290,10 @@ bool FD3D11ObjectIdRenderer::CreateConstantBuffer()
 
 bool FD3D11ObjectIdRenderer::CreateStates()
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr)
+    if (RHI == nullptr)
     {
         return false;
     }
-
-    ID3D11Device* Device = RHI->GetDevice();
 
     {
         D3D11_RASTERIZER_DESC Desc = {};
@@ -260,7 +302,7 @@ bool FD3D11ObjectIdRenderer::CreateStates()
         Desc.FrontCounterClockwise = FALSE;
         Desc.DepthClipEnable = TRUE;
 
-        if (FAILED(Device->CreateRasterizerState(&Desc, RasterizerState.GetAddressOf())))
+        if (!RHI->CreateRasterizerState(Desc, RasterizerState.GetAddressOf()))
         {
             return false;
         }
@@ -272,7 +314,7 @@ bool FD3D11ObjectIdRenderer::CreateStates()
         Desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
         Desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
-        if (FAILED(Device->CreateDepthStencilState(&Desc, DepthStencilState.GetAddressOf())))
+        if (!RHI->CreateDepthStencilState(Desc, DepthStencilState.GetAddressOf()))
         {
             return false;
         }
@@ -283,12 +325,10 @@ bool FD3D11ObjectIdRenderer::CreateStates()
 
 bool FD3D11ObjectIdRenderer::CreatePickResources(int32 InWidth, int32 InHeight)
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr || InWidth <= 0 || InHeight <= 0)
+    if (RHI == nullptr || InWidth <= 0 || InHeight <= 0)
     {
         return false;
     }
-
-    ID3D11Device* Device = RHI->GetDevice();
 
     {
         D3D11_TEXTURE2D_DESC Desc = {};
@@ -301,13 +341,13 @@ bool FD3D11ObjectIdRenderer::CreatePickResources(int32 InWidth, int32 InHeight)
         Desc.Usage = D3D11_USAGE_DEFAULT;
         Desc.BindFlags = D3D11_BIND_RENDER_TARGET;
 
-        if (FAILED(Device->CreateTexture2D(&Desc, nullptr, PickColorTexture.GetAddressOf())))
+        if (!RHI->CreateTexture2D(Desc, nullptr, PickColorTexture.GetAddressOf(),
+                                  EGpuResourceKind::Texture2D))
         {
             return false;
         }
 
-        if (FAILED(Device->CreateRenderTargetView(PickColorTexture.Get(), nullptr,
-                                                  PickRTV.GetAddressOf())))
+        if (!RHI->CreateRenderTargetView(PickColorTexture.Get(), nullptr, PickRTV.GetAddressOf()))
         {
             ReleasePickResources();
             return false;
@@ -325,14 +365,14 @@ bool FD3D11ObjectIdRenderer::CreatePickResources(int32 InWidth, int32 InHeight)
         Desc.Usage = D3D11_USAGE_DEFAULT;
         Desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-        if (FAILED(Device->CreateTexture2D(&Desc, nullptr, PickDepthTexture.GetAddressOf())))
+        if (!RHI->CreateTexture2D(Desc, nullptr, PickDepthTexture.GetAddressOf(),
+                                  EGpuResourceKind::DepthStencilTexture))
         {
             ReleasePickResources();
             return false;
         }
 
-        if (FAILED(Device->CreateDepthStencilView(PickDepthTexture.Get(), nullptr,
-                                                  PickDSV.GetAddressOf())))
+        if (!RHI->CreateDepthStencilView(PickDepthTexture.Get(), nullptr, PickDSV.GetAddressOf()))
         {
             ReleasePickResources();
             return false;
@@ -350,7 +390,8 @@ bool FD3D11ObjectIdRenderer::CreatePickResources(int32 InWidth, int32 InHeight)
         Desc.Usage = D3D11_USAGE_STAGING;
         Desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-        if (FAILED(Device->CreateTexture2D(&Desc, nullptr, ReadbackTexture.GetAddressOf())))
+        if (!RHI->CreateTexture2D(Desc, nullptr, ReadbackTexture.GetAddressOf(),
+                                  EGpuResourceKind::StagingTexture))
         {
             ReleasePickResources();
             return false;
@@ -364,13 +405,13 @@ bool FD3D11ObjectIdRenderer::CreatePickResources(int32 InWidth, int32 InHeight)
 
 void FD3D11ObjectIdRenderer::ReleasePickResources()
 {
-    ReadbackTexture.Reset();
+    UntrackComResource(ReadbackTexture);
 
-    PickDSV.Reset();
-    PickDepthTexture.Reset();
+    UntrackComResource(PickDSV);
+    UntrackComResource(PickDepthTexture);
 
-    PickRTV.Reset();
-    PickColorTexture.Reset();
+    UntrackComResource(PickRTV);
+    UntrackComResource(PickColorTexture);
 
     TargetWidth = 0;
     TargetHeight = 0;
@@ -395,8 +436,8 @@ void FD3D11ObjectIdRenderer::ReleaseBasicMeshes()
 {
     for (int32 i = 0; i < static_cast<int32>(EBasicMeshType::Count); ++i)
     {
-        MeshResources[i].VertexBuffer.Reset();
-        MeshResources[i].IndexBuffer.Reset();
+        UntrackComResource(MeshResources[i].VertexBuffer);
+        UntrackComResource(MeshResources[i].IndexBuffer);
         MeshResources[i].IndexCount = 0;
         MeshResources[i].Topology = EMeshPrimitiveTopology::TriangleList;
     }
@@ -424,7 +465,7 @@ bool FD3D11ObjectIdRenderer::CreateBasicMeshResource(const FVertexSimple* InVert
     if (!RHI->CreateIndexBuffer(InIndices, sizeof(uint16) * InIndexCount, false,
                                 OutResource.IndexBuffer.GetAddressOf()))
     {
-        OutResource.VertexBuffer.Reset();
+        UntrackComResource(OutResource.VertexBuffer);
         return false;
     }
 

@@ -112,6 +112,8 @@ if exist "$(ProjectDir)..\Engine\Bin\$(Configuration)\Engine.pdb" copy /Y "$(Pro
     <ClCompile Include="Source\Panel\ConsolePanel.cpp" />
     <ClCompile Include="Source\Panel\ContentBrowserPanel.cpp" />
     <ClCompile Include="Source\Panel\ControlPanel.cpp" />
+    <ClCompile Include="Source\Panel\GpuProfilerPanel.cpp" />
+    <ClCompile Include="Source\Panel\MemoryProfilerPanel.cpp" />
     <ClCompile Include="Source\Panel\OutlinerPanel.cpp" />
     <ClCompile Include="Source\Panel\Panel.cpp" />
     <ClCompile Include="Source\Panel\PanelManager.cpp" />
@@ -156,6 +158,8 @@ if exist "$(ProjectDir)..\Engine\Bin\$(Configuration)\Engine.pdb" copy /Y "$(Pro
     <ClInclude Include="Source\Panel\ConsolePanel.h" />
     <ClInclude Include="Source\Panel\ContentBrowserPanel.h" />
     <ClInclude Include="Source\Panel\ControlPanel.h" />
+    <ClInclude Include="Source\Panel\GpuProfilerPanel.h" />
+    <ClInclude Include="Source\Panel\MemoryProfilerPanel.h" />
     <ClInclude Include="Source\Panel\OutlinerPanel.h" />
     <ClInclude Include="Source\Panel\Panel.h" />
     <ClInclude Include="Source\Panel\PanelManager.h" />

@@ -7,6 +7,7 @@
 #include "Renderer/D3D11/D3D11TextBatchRenderer.h"
 #include "Renderer/D3D11/D3D11LineBatchRenderer.h"
 #include "Renderer/D3D11/D3D11MeshBatchRenderer.h"
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11OutlineRenderer.h"
 #include "Renderer/D3D11/D3D11ObjectIdRenderer.h"
 #include "Renderer/D3D11/D3D11SpriteBatchRenderer.h"
@@ -21,9 +22,14 @@
 #include "Renderer/SceneRenderData.h"
 #include "Renderer/Types/PickResult.h"
 
+class FManualMemoryCategoryHandle;
+
 class ENGINE_API FRendererModule
 {
   public:
+    FRendererModule();
+    ~FRendererModule();
+
     bool StartupModule(HWND hWnd);
     void ShutdownModule();
 
@@ -43,7 +49,18 @@ class ENGINE_API FRendererModule
     void SetVSyncEnabled(bool bEnabled);
     bool IsVSyncEnabled() const;
 
+    void SetGpuProfilerEnabled(bool bEnabled);
+    bool IsGpuProfilerEnabled() const;
+
+    void SetGpuProfilerPaused(bool bPaused);
+    bool IsGpuProfilerPaused() const;
+
+    void ClearGpuProfiler();
+    const FGpuProfileFrameSnapshot& GetLatestGpuProfileSnapshot() const;
+    const TArray<float>& GetGpuProfilerFrameHistory() const;
+
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI RHI;
 
     FD3D11MeshBatchRenderer   MeshRenderer;
@@ -52,6 +69,7 @@ class ENGINE_API FRendererModule
     FD3D11TextBatchRenderer   TextRenderer;
     FD3D11SpriteBatchRenderer SpriteRenderer;
     FD3D11ObjectIdRenderer    ObjectIdRenderer;
+    FD3D11GpuProfiler         GpuProfiler;
 
     FPrimitiveSubmitter PrimitiveSubmitter;
     FSpriteSubmitter    SpriteSubmitter;
@@ -65,6 +83,8 @@ class ENGINE_API FRendererModule
     FSceneRenderData  CachedSceneRenderData;
 
     TComPtr<ID3D11Debug> DebugDevice;
+
+    uint64 GpuProfilerCaptureCounter = 0;
 
     bool PickRaw(const FEditorRenderData& InEditorRenderData, int32 MouseX, int32 MouseY,
                  uint32& OutPickId);

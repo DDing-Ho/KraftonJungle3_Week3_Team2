@@ -5,6 +5,8 @@
 #include <Windows.h>
 #include <d3dcompiler.h>
 
+enum class EGpuResourceKind : uint8;
+
 class FD3D11RHI
 {
   public:
@@ -54,6 +56,19 @@ class FD3D11RHI
     bool CreatePixelShader(const wchar_t* InFilePath, const char* InEntryPoint,
                            ID3D11PixelShader** OutPixelShader) const;
 
+    bool CreateTexture2D(const D3D11_TEXTURE2D_DESC& InDesc,
+                         const D3D11_SUBRESOURCE_DATA* InInitialData, ID3D11Texture2D** OutTexture,
+                         EGpuResourceKind InKind) const;
+    bool CreateShaderResourceView(ID3D11Resource* InResource,
+                                  const D3D11_SHADER_RESOURCE_VIEW_DESC* InDesc,
+                                  ID3D11ShaderResourceView** OutSRV) const;
+    bool CreateRenderTargetView(ID3D11Resource* InResource,
+                                const D3D11_RENDER_TARGET_VIEW_DESC* InDesc,
+                                ID3D11RenderTargetView** OutRTV) const;
+    bool CreateDepthStencilView(ID3D11Resource* InResource,
+                                const D3D11_DEPTH_STENCIL_VIEW_DESC* InDesc,
+                                ID3D11DepthStencilView** OutDSV) const;
+
     bool CreateConstantBuffer(uint32 InByteWidth, ID3D11Buffer** OutConstantBuffer) const;
     bool UpdateConstantBuffer(ID3D11Buffer* InConstantBuffer, const void* InData,
                               uint32 InDataSize) const;
@@ -66,6 +81,7 @@ class FD3D11RHI
                                  ID3D11DepthStencilState**       OutDepthStencilState) const;
     bool CreateRasterizerState(const D3D11_RASTERIZER_DESC& InDesc,
                                ID3D11RasterizerState**      OutRasterizerState) const;
+    bool CreateQuery(const D3D11_QUERY_DESC& InDesc, ID3D11Query** OutQuery) const;
 
     void SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY InTopology) const;
     void SetInputLayout(ID3D11InputLayout* InInputLayout) const;
@@ -92,6 +108,11 @@ class FD3D11RHI
     void ClearPSShaderResource(uint32 InSlot) const;
     void ClearBlendState() const;
 
+    void    BeginQuery(ID3D11Asynchronous* InQuery) const;
+    void    EndQuery(ID3D11Asynchronous* InQuery) const;
+    HRESULT GetQueryData(ID3D11Asynchronous* InQuery, void* OutData, uint32 InDataSize,
+                         uint32 InFlags = 0) const;
+
     void Draw(uint32 InVertexCount, uint32 InStartVertexLocation = 0) const;
     void DrawIndexed(uint32 InIndexCount, uint32 InStartIndexLocation = 0,
                      int32 InBaseVertexLocation = 0) const;
@@ -111,7 +132,7 @@ class FD3D11RHI
     int32 ViewportWidth = 0;
     int32 ViewportHeight = 0;
 
-    bool bVSyncEnabled = true;
+    bool bVSyncEnabled = false;
 
     TComPtr<ID3D11Device>        Device;
     TComPtr<ID3D11DeviceContext> DeviceContext;

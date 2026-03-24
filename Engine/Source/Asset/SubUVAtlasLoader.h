@@ -8,11 +8,13 @@
 #include "ThirdParty/Json/json.hpp"
 
 class FD3D11RHI;
+class FManualMemoryCategoryHandle;
 
 class ENGINE_API FSubUVAtlasLoader : public IAssetLoader
 {
 public:
     explicit FSubUVAtlasLoader(FD3D11RHI* InRHI);
+    ~FSubUVAtlasLoader();
 
     bool       CanLoad(const FWString& Path, const FAssetLoadParams& Params) const override;
     EAssetType GetAssetType() const override;
@@ -46,6 +48,7 @@ private:
     FWString ResolveSiblingPath(const FWString& BaseFilePath, const FString& RelativePath) const;
 
 private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI* RHI = nullptr;
 
     mutable FSourceCache AtlasSourceCache;

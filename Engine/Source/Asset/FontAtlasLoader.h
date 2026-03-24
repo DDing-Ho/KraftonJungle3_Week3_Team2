@@ -8,11 +8,13 @@
 #include "ThirdParty/Json/json.hpp"
 
 class FD3D11RHI;
+class FManualMemoryCategoryHandle;
 
 class ENGINE_API FFontAtlasLoader : public IAssetLoader
 {
   public:
     explicit FFontAtlasLoader(FD3D11RHI* InRHI);
+    ~FFontAtlasLoader();
 
     bool       CanLoad(const FWString& Path, const FAssetLoadParams& Params) const override;
     EAssetType GetAssetType() const override;
@@ -48,6 +50,7 @@ class ENGINE_API FFontAtlasLoader : public IAssetLoader
     FWString ResolveSiblingPath(const FWString& BaseFilePath, const FString& RelativePath) const;
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI* RHI = nullptr;
 
     mutable FSourceCache                                       AtlasSourceCache;

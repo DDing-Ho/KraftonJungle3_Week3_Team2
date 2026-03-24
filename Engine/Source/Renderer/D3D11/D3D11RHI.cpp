@@ -1,5 +1,15 @@
 #include "Core/HAL/PlatformTypes.h"
+#include "Engine/MemoryProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
+
+namespace
+{
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+}
 
 bool FD3D11RHI::Initialize(HWND InWindowHandle)
 {
@@ -57,6 +67,7 @@ void FD3D11RHI::Shutdown()
 
     ReleaseBackBufferResources();
 
+    FMemoryProfiler::Get().UnregisterGpuResource(SwapChain.Get());
     SwapChain.Reset();
     DeviceContext.Reset();
     Device.Reset();
@@ -230,6 +241,10 @@ bool FD3D11RHI::CreateVertexShaderAndInputLayout(
         return false;
     }
 
+    FMemoryProfiler::Get().RegisterGpuCountOnly(*OutVertexShader, EGpuResourceKind::VertexShader,
+                                                "Renderer/VertexShader");
+    FMemoryProfiler::Get().RegisterGpuCountOnly(*OutInputLayout, EGpuResourceKind::InputLayout,
+                                                "Renderer/InputLayout");
     return true;
 }
 
@@ -270,7 +285,14 @@ bool FD3D11RHI::CreateVertexBuffer(const void* InData, uint32 InByteWidth, uint3
     }
 
     HRESULT Hr = Device->CreateBuffer(&Desc, InitialDataPtr, OutVertexBuffer);
-    return SUCCEEDED(Hr);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuBuffer(*OutVertexBuffer, EGpuResourceKind::VertexBuffer,
+                                                 "Renderer/VertexBuffer");
+        return true;
+    }
+
+    return false;
 }
 
 bool FD3D11RHI::CreateIndexBuffer(const void* InData, uint32 InByteWidth, bool bDynamic,
@@ -310,11 +332,17 @@ bool FD3D11RHI::CreateIndexBuffer(const void* InData, uint32 InByteWidth, bool b
     }
 
     HRESULT Hr = Device->CreateBuffer(&Desc, InitialDataPtr, OutIndexBuffer);
-    return SUCCEEDED(Hr);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuBuffer(*OutIndexBuffer, EGpuResourceKind::IndexBuffer,
+                                                 "Renderer/IndexBuffer");
+        return true;
+    }
+    return false;
 }
 
 bool FD3D11RHI::CreatePixelShader(const wchar_t* InFilePath, const char* InEntryPoint,
-                                         ID3D11PixelShader** OutPixelShader) const
+                                          ID3D11PixelShader** OutPixelShader) const
 {
     if (OutPixelShader == nullptr)
     {
@@ -331,12 +359,97 @@ bool FD3D11RHI::CreatePixelShader(const wchar_t* InFilePath, const char* InEntry
 
     HRESULT Hr = Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(),
                                            nullptr, OutPixelShader);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutPixelShader, EGpuResourceKind::PixelShader,
+                                                    "Renderer/PixelShader");
+        return true;
+    }
 
-    return SUCCEEDED(Hr);
+    return false;
+}
+
+bool FD3D11RHI::CreateTexture2D(const D3D11_TEXTURE2D_DESC& InDesc,
+                                const D3D11_SUBRESOURCE_DATA* InInitialData,
+                                ID3D11Texture2D** OutTexture, EGpuResourceKind InKind) const
+{
+    if (Device == nullptr || OutTexture == nullptr)
+    {
+        return false;
+    }
+
+    *OutTexture = nullptr;
+    const HRESULT Hr = Device->CreateTexture2D(&InDesc, InInitialData, OutTexture);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuTexture2D(*OutTexture, InKind, "Renderer/Texture2D");
+        return true;
+    }
+    return false;
+}
+
+bool FD3D11RHI::CreateShaderResourceView(ID3D11Resource* InResource,
+                                         const D3D11_SHADER_RESOURCE_VIEW_DESC* InDesc,
+                                         ID3D11ShaderResourceView** OutSRV) const
+{
+    if (Device == nullptr || InResource == nullptr || OutSRV == nullptr)
+    {
+        return false;
+    }
+
+    *OutSRV = nullptr;
+    const HRESULT Hr = Device->CreateShaderResourceView(InResource, InDesc, OutSRV);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutSRV, EGpuResourceKind::ShaderResourceView,
+                                                    "Renderer/SRV");
+        return true;
+    }
+    return false;
+}
+
+bool FD3D11RHI::CreateRenderTargetView(ID3D11Resource* InResource,
+                                       const D3D11_RENDER_TARGET_VIEW_DESC* InDesc,
+                                       ID3D11RenderTargetView** OutRTV) const
+{
+    if (Device == nullptr || InResource == nullptr || OutRTV == nullptr)
+    {
+        return false;
+    }
+
+    *OutRTV = nullptr;
+    const HRESULT Hr = Device->CreateRenderTargetView(InResource, InDesc, OutRTV);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutRTV, EGpuResourceKind::RenderTargetView,
+                                                    "Renderer/RTV");
+        return true;
+    }
+    return false;
+}
+
+bool FD3D11RHI::CreateDepthStencilView(ID3D11Resource* InResource,
+                                       const D3D11_DEPTH_STENCIL_VIEW_DESC* InDesc,
+                                       ID3D11DepthStencilView** OutDSV) const
+{
+    if (Device == nullptr || InResource == nullptr || OutDSV == nullptr)
+    {
+        return false;
+    }
+
+    *OutDSV = nullptr;
+    const HRESULT Hr = Device->CreateDepthStencilView(InResource, InDesc, OutDSV);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutDSV, EGpuResourceKind::DepthStencilView,
+                                                    "Renderer/DSV");
+        return true;
+    }
+    return false;
 }
 
 bool FD3D11RHI::CreateConstantBuffer(uint32         InByteWidth,
-                                            ID3D11Buffer** OutConstantBuffer) const
+                                             ID3D11Buffer** OutConstantBuffer) const
 {
     if (OutConstantBuffer == nullptr)
     {
@@ -354,7 +467,14 @@ bool FD3D11RHI::CreateConstantBuffer(uint32         InByteWidth,
     Desc.StructureByteStride = 0;
 
     HRESULT Hr = Device->CreateBuffer(&Desc, nullptr, OutConstantBuffer);
-    return SUCCEEDED(Hr);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuBuffer(*OutConstantBuffer,
+                                                 EGpuResourceKind::ConstantBuffer,
+                                                 "Renderer/ConstantBuffer");
+        return true;
+    }
+    return false;
 }
 
 void FD3D11RHI::Clear(const FLOAT InClearColor[4], float InDepth, uint8 InStencil)
@@ -423,7 +543,14 @@ bool FD3D11RHI::CreateDeviceAndSwapChain(HWND InWindowHandle)
     }
 #endif
 
-    return SUCCEEDED(Hr);
+    if (SUCCEEDED(Hr))
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(SwapChain.Get(), EGpuResourceKind::SwapChain,
+                                                    "Renderer/SwapChain");
+        return true;
+    }
+
+    return false;
 }
 
 bool FD3D11RHI::CreateBackBuffer()
@@ -441,10 +568,17 @@ bool FD3D11RHI::CreateBackBuffer()
         return false;
     }
 
-    Hr = Device->CreateRenderTargetView(BackBufferTexture.Get(), nullptr,
-                                        BackBufferRTV.GetAddressOf());
+    FMemoryProfiler::Get().RegisterGpuTexture2D(BackBufferTexture.Get(), EGpuResourceKind::BackBuffer,
+                                                "Renderer/BackBuffer");
 
-    return SUCCEEDED(Hr);
+    if (!CreateRenderTargetView(BackBufferTexture.Get(), nullptr, BackBufferRTV.GetAddressOf()))
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(BackBufferTexture.Get());
+        BackBufferTexture.Reset();
+        return false;
+    }
+
+    return true;
 }
 
 bool FD3D11RHI::CreateDepthStencilBuffer(int32 InWidth, int32 InHeight)
@@ -467,26 +601,28 @@ bool FD3D11RHI::CreateDepthStencilBuffer(int32 InWidth, int32 InHeight)
     DepthDesc.CPUAccessFlags = 0;
     DepthDesc.MiscFlags = 0;
 
-    HRESULT Hr = Device->CreateTexture2D(&DepthDesc, nullptr, DepthStencilBuffer.GetAddressOf());
-
-    if (FAILED(Hr))
+    if (!CreateTexture2D(DepthDesc, nullptr, DepthStencilBuffer.GetAddressOf(),
+                         EGpuResourceKind::DepthStencilTexture))
     {
         return false;
     }
 
-    Hr = Device->CreateDepthStencilView(DepthStencilBuffer.Get(), nullptr,
-                                        DepthStencilView.GetAddressOf());
+    if (!CreateDepthStencilView(DepthStencilBuffer.Get(), nullptr, DepthStencilView.GetAddressOf()))
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(DepthStencilBuffer.Get());
+        DepthStencilBuffer.Reset();
+        return false;
+    }
 
-    return SUCCEEDED(Hr);
+    return true;
 }
 
 void FD3D11RHI::ReleaseBackBufferResources()
 {
-    DepthStencilView.Reset();
-    DepthStencilBuffer.Reset();
-
-    BackBufferRTV.Reset();
-    BackBufferTexture.Reset();
+    UntrackComResource(DepthStencilView);
+    UntrackComResource(DepthStencilBuffer);
+    UntrackComResource(BackBufferRTV);
+    UntrackComResource(BackBufferTexture);
 }
 
 bool FD3D11RHI::UpdateConstantBuffer(ID3D11Buffer* InConstantBuffer, const void* InData,
@@ -680,7 +816,14 @@ bool FD3D11RHI::CreateSamplerState(const D3D11_SAMPLER_DESC& InDesc,
     }
 
     *OutSamplerState = nullptr;
-    return SUCCEEDED(Device->CreateSamplerState(&InDesc, OutSamplerState));
+    const bool bSucceeded = SUCCEEDED(Device->CreateSamplerState(&InDesc, OutSamplerState));
+    if (bSucceeded)
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutSamplerState,
+                                                    EGpuResourceKind::SamplerState,
+                                                    "Renderer/SamplerState");
+    }
+    return bSucceeded;
 }
 
 bool FD3D11RHI::CreateBlendState(const D3D11_BLEND_DESC& InDesc,
@@ -692,7 +835,13 @@ bool FD3D11RHI::CreateBlendState(const D3D11_BLEND_DESC& InDesc,
     }
 
     *OutBlendState = nullptr;
-    return SUCCEEDED(Device->CreateBlendState(&InDesc, OutBlendState));
+    const bool bSucceeded = SUCCEEDED(Device->CreateBlendState(&InDesc, OutBlendState));
+    if (bSucceeded)
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutBlendState, EGpuResourceKind::BlendState,
+                                                    "Renderer/BlendState");
+    }
+    return bSucceeded;
 }
 
 bool FD3D11RHI::CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& InDesc,
@@ -704,7 +853,15 @@ bool FD3D11RHI::CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& InDesc,
     }
 
     *OutDepthStencilState = nullptr;
-    return SUCCEEDED(Device->CreateDepthStencilState(&InDesc, OutDepthStencilState));
+    const bool bSucceeded =
+        SUCCEEDED(Device->CreateDepthStencilState(&InDesc, OutDepthStencilState));
+    if (bSucceeded)
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutDepthStencilState,
+                                                    EGpuResourceKind::DepthStencilState,
+                                                    "Renderer/DepthStencilState");
+    }
+    return bSucceeded;
 }
 
 bool FD3D11RHI::CreateRasterizerState(const D3D11_RASTERIZER_DESC& InDesc,
@@ -716,7 +873,31 @@ bool FD3D11RHI::CreateRasterizerState(const D3D11_RASTERIZER_DESC& InDesc,
     }
 
     *OutRasterizerState = nullptr;
-    return SUCCEEDED(Device->CreateRasterizerState(&InDesc, OutRasterizerState));
+    const bool bSucceeded = SUCCEEDED(Device->CreateRasterizerState(&InDesc, OutRasterizerState));
+    if (bSucceeded)
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutRasterizerState,
+                                                    EGpuResourceKind::RasterizerState,
+                                                    "Renderer/RasterizerState");
+    }
+    return bSucceeded;
+}
+
+bool FD3D11RHI::CreateQuery(const D3D11_QUERY_DESC& InDesc, ID3D11Query** OutQuery) const
+{
+    if (Device == nullptr || OutQuery == nullptr)
+    {
+        return false;
+    }
+
+    *OutQuery = nullptr;
+    const bool bSucceeded = SUCCEEDED(Device->CreateQuery(&InDesc, OutQuery));
+    if (bSucceeded)
+    {
+        FMemoryProfiler::Get().RegisterGpuCountOnly(*OutQuery, EGpuResourceKind::Query,
+                                                    "Renderer/Query");
+    }
+    return bSucceeded;
 }
 
 void FD3D11RHI::SetBlendState(ID3D11BlendState* InBlendState, const float InBlendFactor[4],
@@ -776,4 +957,32 @@ void FD3D11RHI::ClearBlendState() const
 
     const FLOAT BlendFactor[4] = {0.f, 0.f, 0.f, 0.f};
     DeviceContext->OMSetBlendState(nullptr, BlendFactor, 0xFFFFFFFFu);
+}
+
+void FD3D11RHI::BeginQuery(ID3D11Asynchronous* InQuery) const
+{
+    if (DeviceContext != nullptr && InQuery != nullptr)
+    {
+        DeviceContext->Begin(InQuery);
+    }
+}
+
+void FD3D11RHI::EndQuery(ID3D11Asynchronous* InQuery) const
+{
+    if (DeviceContext != nullptr && InQuery != nullptr)
+    {
+        DeviceContext->End(InQuery);
+    }
+}
+
+HRESULT FD3D11RHI::GetQueryData(ID3D11Asynchronous* InQuery, void* OutData, uint32 InDataSize,
+                                uint32 InFlags) const
+{
+    if (DeviceContext == nullptr || InQuery == nullptr || OutData == nullptr || InDataSize == 0)
+    {
+        return E_INVALIDARG;
+    }
+
+    return DeviceContext->GetData(InQuery, OutData, static_cast<UINT>(InDataSize),
+                                  static_cast<UINT>(InFlags));
 }

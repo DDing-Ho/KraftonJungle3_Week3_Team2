@@ -5,6 +5,7 @@
 class UAssetManager;
 class UObject;
 class FD3D11RHI;
+class FRendererModule;
 class FScene;
 class FEditor;
 class AActor;
@@ -14,6 +15,7 @@ struct FEditorContext
 {
 	FEditor* Editor = nullptr;
 	FScene* Scene = nullptr;
+	FRendererModule* Renderer = nullptr;
 	FD3D11RHI* RHI = nullptr;
 	UAssetManager* AssetManager = nullptr;
 	FEditorContentIndex* ContentIndex = nullptr;

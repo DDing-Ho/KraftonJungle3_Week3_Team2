@@ -1,9 +1,11 @@
 #include "Renderer/D3D11/D3D11MeshBatchRenderer.h"
 
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/SceneView.h"
 #include "Renderer/Types/ShaderConstants.h"
 #include "Renderer/Types/VertexTypes.h"
+#include "Engine/MemoryProfiler.h"
 
 #include "Resources/Mesh/Cone.h"
 #include "Resources/Mesh/Cube.h"
@@ -13,6 +15,46 @@
 #include "Resources/Mesh/Sphere.h"
 #include "Resources/Mesh/Triangle.h"
 
+namespace
+{
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+
+    FString GetMeshTypeProfileLabel(EBasicMeshType InType)
+    {
+        switch (InType)
+        {
+        case EBasicMeshType::Cube:
+            return "Mesh/Cube";
+        case EBasicMeshType::Quad:
+            return "Mesh/Quad";
+        case EBasicMeshType::Triangle:
+            return "Mesh/Triangle";
+        case EBasicMeshType::Sphere:
+            return "Mesh/Sphere";
+        case EBasicMeshType::Cone:
+            return "Mesh/Cone";
+        case EBasicMeshType::Cylinder:
+            return "Mesh/Cylinder";
+        case EBasicMeshType::Ring:
+            return "Mesh/Ring";
+        default:
+            return "Mesh/Unknown";
+        }
+    }
+}
+
+FD3D11MeshBatchRenderer::FD3D11MeshBatchRenderer()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>(
+          "Renderer/FD3D11MeshBatchRenderer", sizeof(FD3D11MeshBatchRenderer)))
+{
+}
+
+FD3D11MeshBatchRenderer::~FD3D11MeshBatchRenderer() = default;
+
 bool FD3D11MeshBatchRenderer::Initialize(FD3D11RHI* InRHI)
 {
     if (InRHI == nullptr)
@@ -21,6 +63,7 @@ bool FD3D11MeshBatchRenderer::Initialize(FD3D11RHI* InRHI)
     }
 
     RHI = InRHI;
+    GpuProfiler = nullptr;
     CurrentSceneView = nullptr;
     bUseInstancing = true;
 
@@ -66,22 +109,23 @@ void FD3D11MeshBatchRenderer::Shutdown()
     CurrentSceneView = nullptr;
     bUseInstancing = true;
 
-    DepthStencilState.Reset();
-    WireframeRasterizerState.Reset();
-    SolidRasterizerState.Reset();
+    UntrackComResource(DepthStencilState);
+    UntrackComResource(WireframeRasterizerState);
+    UntrackComResource(SolidRasterizerState);
 
-    InstanceBuffer.Reset();
-    InstancedConstantBuffer.Reset();
-    SingleConstantBuffer.Reset();
+    UntrackComResource(InstanceBuffer);
+    UntrackComResource(InstancedConstantBuffer);
+    UntrackComResource(SingleConstantBuffer);
 
-    InstancedInputLayout.Reset();
-    InstancedVertexShader.Reset();
-    InstancedPixelShader.Reset();
+    UntrackComResource(InstancedInputLayout);
+    UntrackComResource(InstancedVertexShader);
+    UntrackComResource(InstancedPixelShader);
 
-    SingleInputLayout.Reset();
-    SingleVertexShader.Reset();
-    SinglePixelShader.Reset();
+    UntrackComResource(SingleInputLayout);
+    UntrackComResource(SingleVertexShader);
+    UntrackComResource(SinglePixelShader);
 
+    GpuProfiler = nullptr;
     RHI = nullptr;
 }
 
@@ -225,12 +269,10 @@ bool FD3D11MeshBatchRenderer::CreateConstantBuffers()
 }
 bool FD3D11MeshBatchRenderer::CreateStates()
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr)
+    if (RHI == nullptr)
     {
         return false;
     }
-
-    ID3D11Device* Device = RHI->GetDevice();
 
     {
         D3D11_RASTERIZER_DESC Desc = {};
@@ -239,13 +281,13 @@ bool FD3D11MeshBatchRenderer::CreateStates()
         Desc.FrontCounterClockwise = FALSE;
         Desc.DepthClipEnable = TRUE;
 
-        if (FAILED(Device->CreateRasterizerState(&Desc, SolidRasterizerState.GetAddressOf())))
+        if (!RHI->CreateRasterizerState(Desc, SolidRasterizerState.GetAddressOf()))
         {
             return false;
         }
 
         Desc.FillMode = D3D11_FILL_WIREFRAME;
-        if (FAILED(Device->CreateRasterizerState(&Desc, WireframeRasterizerState.GetAddressOf())))
+        if (!RHI->CreateRasterizerState(Desc, WireframeRasterizerState.GetAddressOf()))
         {
             return false;
         }
@@ -257,7 +299,7 @@ bool FD3D11MeshBatchRenderer::CreateStates()
         Desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
         Desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
-        if (FAILED(Device->CreateDepthStencilState(&Desc, DepthStencilState.GetAddressOf())))
+        if (!RHI->CreateDepthStencilState(Desc, DepthStencilState.GetAddressOf()))
         {
             return false;
         }
@@ -338,8 +380,8 @@ void FD3D11MeshBatchRenderer::ReleaseBasicMeshes()
 {
     for (int32 Index = 0; Index < static_cast<int32>(EBasicMeshType::Count); ++Index)
     {
-        BasicMeshResources[Index].VertexBuffer.Reset();
-        BasicMeshResources[Index].IndexBuffer.Reset();
+        UntrackComResource(BasicMeshResources[Index].VertexBuffer);
+        UntrackComResource(BasicMeshResources[Index].IndexBuffer);
         BasicMeshResources[Index].IndexCount = 0;
         BasicMeshResources[Index].Topology = EMeshPrimitiveTopology::TriangleList;
     }
@@ -367,7 +409,7 @@ bool FD3D11MeshBatchRenderer::CreateBasicMeshResource(const FVertexSimple* InVer
     if (!RHI->CreateIndexBuffer(InIndices, sizeof(uint16) * InIndexCount, false,
                                 OutResource.IndexBuffer.GetAddressOf()))
     {
-        OutResource.VertexBuffer.Reset();
+        UntrackComResource(OutResource.VertexBuffer);
         return false;
     }
 
@@ -553,6 +595,9 @@ void FD3D11MeshBatchRenderer::DrawMeshBatch(EBasicMeshType InType, EMeshDrawPath
 
         RHI->SetVertexBuffers(0, 2, VertexBuffers, Strides, Offsets);
         RHI->SetIndexBuffer(MeshResource->IndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+        const FGpuProfileScopeGuard ScopeGuard(
+            GpuProfiler, GetMeshTypeProfileLabel(InType) + "/Instanced", "Mesh",
+            EGpuProfileDrawType::DrawIndexedInstanced, MeshResource->IndexCount, InstanceCount);
         RHI->DrawIndexedInstanced(MeshResource->IndexCount, InstanceCount, 0, 0, 0);
     }
     else
@@ -576,6 +621,9 @@ void FD3D11MeshBatchRenderer::DrawMeshBatch(EBasicMeshType InType, EMeshDrawPath
                 continue;
             }
 
+            const FGpuProfileScopeGuard ScopeGuard(
+                GpuProfiler, GetMeshTypeProfileLabel(InType) + "/Single", "Mesh",
+                EGpuProfileDrawType::DrawIndexed, MeshResource->IndexCount, 1);
             RHI->DrawIndexed(MeshResource->IndexCount, 0, 0);
         }
     }

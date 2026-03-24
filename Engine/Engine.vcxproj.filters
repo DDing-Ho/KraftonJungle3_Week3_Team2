@@ -10,15 +10,6 @@
     <Filter Include="Resources\Mesh">
       <UniqueIdentifier>{611fd08d-c5f2-636f-d61c-0405906a469d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resources\Scene">
-      <UniqueIdentifier>{6f21998c-ad3f-4295-5a94-62d9702a0e9b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Resources\Shader">
-      <UniqueIdentifier>{d32ca5c8-c821-11f5-dfa1-d5050d286dcf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Resources\Texture">
-      <UniqueIdentifier>{a2187649-a844-6073-73c0-7c7d7cb99990}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\ApplicationCore">
       <UniqueIdentifier>{57812f21-7fc5-e713-3694-11639c1953c0}</UniqueIdentifier>
     </Filter>
@@ -255,11 +246,17 @@
     <ClCompile Include="Source\Engine\Game\UnknownActor.cpp">
       <Filter>Source\Engine\Game</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\MemoryProfiler.cpp">
+      <Filter>Source\Engine</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Scene.cpp">
       <Filter>Source\Engine</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\ViewPort\Viewport.cpp">
       <Filter>Source\Engine\ViewPort</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Renderer\D3D11\D3D11GpuProfiler.cpp">
+      <Filter>Source\Renderer\D3D11</Filter>
     </ClCompile>
     <ClCompile Include="Source\Renderer\D3D11\D3D11LineBatchRenderer.cpp">
       <Filter>Source\Renderer\D3D11</Filter>
@@ -572,6 +569,9 @@
     <ClInclude Include="Source\Engine\Game\UnknownActor.h">
       <Filter>Source\Engine\Game</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\MemoryProfiler.h">
+      <Filter>Source\Engine</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Scene.h">
       <Filter>Source\Engine</Filter>
     </ClInclude>
@@ -588,6 +588,9 @@
       <Filter>Source\Launch</Filter>
     </ClInclude>
     <ClInclude Include="Source\Renderer\D3D11\D3D11Common.h">
+      <Filter>Source\Renderer\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Renderer\D3D11\D3D11GpuProfiler.h">
       <Filter>Source\Renderer\D3D11</Filter>
     </ClInclude>
     <ClInclude Include="Source\Renderer\D3D11\D3D11LineBatchRenderer.h">
@@ -660,6 +663,9 @@
       <Filter>Source\Renderer\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Renderer\Types\EditorShowFlags.h">
+      <Filter>Source\Renderer\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Renderer\Types\GpuProfilerTypes.h">
       <Filter>Source\Renderer\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Renderer\Types\MeshInstanceData.h">

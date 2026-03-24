@@ -11,11 +11,15 @@
 #include <utility>
 
 struct FEditorContext;
+class FManualMemoryCategoryHandle;
 
 class FPanelManager : public IPanelService
 {
 public:
     using FPanelDescriptorRegisteredCallback = std::function<void(const FPanelDescriptor&)>;
+
+    FPanelManager();
+    ~FPanelManager();
 
     // PanelManager가 에디터 컨텍스트를 참조할 수 있도록 초기 연결을 합니다.
     void Initialize(FEditorContext* InContext);
@@ -36,6 +40,11 @@ public:
 
         // 패널을 즉시 생성해서 바로 사용할 때 쓰는 등록 경로입니다.
         auto Panel = std::make_unique<TPanel>(std::forward<TArgs>(Args)...);
+        const FString DisplayName =
+            Panel->GetDisplayName() != nullptr
+                ? Engine::Core::Misc::FName(Panel->GetDisplayName()).ToFString()
+                : FString(typeid(TPanel).name());
+        Panel->TrackMemoryCategory("Panel/" + DisplayName, sizeof(TPanel));
         TPanel* RawPanel = Panel.get();
         RegisterPanel(std::move(Panel));
         return RawPanel;
@@ -48,7 +57,13 @@ public:
         // 실제 열기 요청이 들어왔을 때 새 패널을 만들 수 있도록 팩토리를 등록합니다.
         PanelFactories[std::type_index(typeid(TPanel))] = []()
         {
-            return std::make_unique<TPanel>();
+            auto Panel = std::make_unique<TPanel>();
+            const FString DisplayName =
+                Panel->GetDisplayName() != nullptr
+                    ? Engine::Core::Misc::FName(Panel->GetDisplayName()).ToFString()
+                    : FString(typeid(TPanel).name());
+            Panel->TrackMemoryCategory("Panel/" + DisplayName, sizeof(TPanel));
+            return Panel;
         };
 
         // Window 메뉴 자동 구성을 위해 타입만 등록해도 descriptor를 미리 수집합니다.
@@ -86,4 +101,5 @@ private:
     TMap<std::type_index, std::function<std::unique_ptr<IPanel>()>> PanelFactories;
     TArray<FPanelDescriptor> PanelDescriptors;
     FPanelDescriptorRegisteredCallback PanelDescriptorRegisteredCallback;
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
 };

@@ -1,4 +1,5 @@
 #include "Renderer/RendererModule.h"
+#include "Engine/MemoryProfiler.h"
 #include "Renderer/Types/PickId.h"
 #include "Renderer/Types/PickResult.h"
 
@@ -43,6 +44,14 @@ namespace
         return SubmissionItems;
     }
 } // namespace
+
+FRendererModule::FRendererModule()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>("Renderer/FRendererModule",
+                                                                      sizeof(FRendererModule)))
+{
+}
+
+FRendererModule::~FRendererModule() = default;
 
 bool FRendererModule::StartupModule(HWND hWnd)
 {
@@ -93,6 +102,19 @@ bool FRendererModule::StartupModule(HWND hWnd)
         return false;
     }
 
+    if (!GpuProfiler.Initialize(&RHI))
+    {
+        ShutdownModule();
+        return false;
+    }
+
+    MeshRenderer.SetGpuProfiler(&GpuProfiler);
+    OutlineRenderer.SetGpuProfiler(&GpuProfiler);
+    LineRenderer.SetGpuProfiler(&GpuProfiler);
+    TextRenderer.SetGpuProfiler(&GpuProfiler);
+    SpriteRenderer.SetGpuProfiler(&GpuProfiler);
+    ObjectIdRenderer.SetGpuProfiler(&GpuProfiler);
+
 #if defined(_DEBUG)
     if (RHI.GetDevice() != nullptr)
     {
@@ -108,6 +130,7 @@ void FRendererModule::ShutdownModule()
 {
     DebugDevice.Reset();
 
+    GpuProfiler.Shutdown();
     ObjectIdRenderer.Shutdown();
     SpriteRenderer.Shutdown();
     TextRenderer.Shutdown();
@@ -155,8 +178,12 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
     CachedEditorRenderData = InEditorRenderData;
     CachedSceneRenderData = InSceneRenderData;
 
+    const bool bProfileCaptureActive = GpuProfiler.BeginCapture("Frame", ++GpuProfilerCaptureCounter);
+    const FGpuProfileScopeGuard FrameScope(&GpuProfiler, "Frame", "Capture");
+
     if (ShouldRenderScenePrimitives(InSceneRenderData))
     {
+        const FGpuProfileScopeGuard SceneMeshScope(&GpuProfiler, "Scene Mesh", "Pass");
         MeshRenderer.BeginFrame(InSceneRenderData.SceneView, InSceneRenderData.ViewMode,
                                 InSceneRenderData.bUseInstancing);
 
@@ -176,6 +203,7 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
 
     if (ShouldRenderSelectionOutline(InEditorRenderData, InSceneRenderData))
     {
+        const FGpuProfileScopeGuard OutlineScope(&GpuProfiler, "Selection Outline", "Pass");
         OutlineRenderer.BeginFrame(InSceneRenderData.SceneView);
         OutlineRenderer.AddPrimitives(InSceneRenderData.Primitives);
         OutlineRenderer.EndFrame();
@@ -184,6 +212,7 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
     if (InSceneRenderData.SceneView != nullptr &&
         IsFlagSet(InSceneRenderData.ShowFlags, ESceneShowFlags::SF_Sprites))
     {
+        const FGpuProfileScopeGuard SpriteScope(&GpuProfiler, "Sprites", "Pass");
         SpriteRenderer.BeginFrame(InSceneRenderData.SceneView);
         SpriteSubmitter.Submit(SpriteRenderer, InSceneRenderData);
         SpriteRenderer.EndFrame(InSceneRenderData.SceneView);
@@ -192,6 +221,7 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
     if (InSceneRenderData.SceneView != nullptr &&
         IsFlagSet(InSceneRenderData.ShowFlags, ESceneShowFlags::SF_BillboardText))
     {
+        const FGpuProfileScopeGuard TextScope(&GpuProfiler, "Text", "Pass");
         TextRenderer.BeginFrame(InSceneRenderData.SceneView);
         TextSubmitter.Submit(TextRenderer, InSceneRenderData);
         TextRenderer.EndFrame(InSceneRenderData.SceneView);
@@ -200,6 +230,7 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
     if (InEditorRenderData.SceneView != nullptr &&
         IsFlagSet(InEditorRenderData.ShowFlags, EEditorShowFlags::SF_Gizmo))
     {
+        const FGpuProfileScopeGuard GizmoScope(&GpuProfiler, "Gizmo", "Pass");
         MeshRenderer.BeginFrame(InEditorRenderData.SceneView, InSceneRenderData.ViewMode,
                                 InSceneRenderData.bUseInstancing);
         GizmoSubmitter.Submit(MeshRenderer, InEditorRenderData);
@@ -208,6 +239,7 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
 
     if (InEditorRenderData.SceneView != nullptr)
     {
+        const FGpuProfileScopeGuard LineScope(&GpuProfiler, "Lines", "Pass");
         LineRenderer.BeginFrame(InEditorRenderData.SceneView);
 
         if (IsFlagSet(InEditorRenderData.ShowFlags, EEditorShowFlags::SF_Grid))
@@ -224,6 +256,12 @@ void FRendererModule::Render(const FEditorRenderData& InEditorRenderData,
 
         LineRenderer.EndFrame();
     }
+
+    if (bProfileCaptureActive)
+    {
+        GpuProfiler.EndCapture();
+    }
+    GpuProfiler.ResolveCompletedCaptures();
 }
 
 bool FRendererModule::PickRaw(const FEditorRenderData& InEditorRenderData, int32 MouseX,
@@ -246,7 +284,21 @@ bool FRendererModule::PickRaw(const FEditorRenderData& InEditorRenderData, int32
         ObjectIdRenderer.AddPrimitives(GizmoItems);
     }
 
-    return ObjectIdRenderer.RenderAndReadBack(OutPickId);
+    const bool bProfileCaptureActive = GpuProfiler.BeginCapture("Pick", ++GpuProfilerCaptureCounter);
+    bool       bReadbackOk = false;
+    {
+        const FGpuProfileScopeGuard PickScope(&GpuProfiler, "Pick", "Capture");
+        const FGpuProfileScopeGuard PassScope(&GpuProfiler, "ObjectId Pass", "Pass");
+        bReadbackOk = ObjectIdRenderer.RenderAndReadBack(OutPickId);
+    }
+
+    if (bProfileCaptureActive)
+    {
+        GpuProfiler.EndCapture();
+    }
+    GpuProfiler.ResolveCompletedCaptures();
+
+    return bReadbackOk;
 }
 
 bool FRendererModule::Pick(const FEditorRenderData& InEditorRenderData, int32 MouseX, int32 MouseY,
@@ -267,3 +319,32 @@ bool FRendererModule::Pick(const FEditorRenderData& InEditorRenderData, int32 Mo
 void FRendererModule::SetVSyncEnabled(bool bEnabled) { RHI.SetVSyncEnabled(bEnabled); }
 
 bool FRendererModule::IsVSyncEnabled() const { return RHI.IsVSyncEnabled(); }
+
+void FRendererModule::SetGpuProfilerEnabled(bool bEnabled)
+{
+    GpuProfiler.SetEnabled(bEnabled);
+}
+
+bool FRendererModule::IsGpuProfilerEnabled() const { return GpuProfiler.IsEnabled(); }
+
+void FRendererModule::SetGpuProfilerPaused(bool bPaused)
+{
+    GpuProfiler.SetPaused(bPaused);
+}
+
+bool FRendererModule::IsGpuProfilerPaused() const { return GpuProfiler.IsPaused(); }
+
+void FRendererModule::ClearGpuProfiler()
+{
+    GpuProfiler.Clear();
+}
+
+const FGpuProfileFrameSnapshot& FRendererModule::GetLatestGpuProfileSnapshot() const
+{
+    return GpuProfiler.GetLatestSnapshot();
+}
+
+const TArray<float>& FRendererModule::GetGpuProfilerFrameHistory() const
+{
+    return GpuProfiler.GetFrameHistoryMs();
+}

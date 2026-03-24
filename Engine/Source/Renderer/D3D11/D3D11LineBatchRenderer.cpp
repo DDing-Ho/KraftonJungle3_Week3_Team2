@@ -1,8 +1,27 @@
 #include "Renderer/D3D11/D3D11LineBatchRenderer.h"
 
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/SceneView.h"
 #include "Renderer/Types/ShaderConstants.h"
+#include "Engine/MemoryProfiler.h"
+
+namespace
+{
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+}
+
+FD3D11LineBatchRenderer::FD3D11LineBatchRenderer()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>(
+          "Renderer/FD3D11LineBatchRenderer", sizeof(FD3D11LineBatchRenderer)))
+{
+}
+
+FD3D11LineBatchRenderer::~FD3D11LineBatchRenderer() = default;
 
 bool FD3D11LineBatchRenderer::Initialize(FD3D11RHI* InRHI)
 {
@@ -12,6 +31,7 @@ bool FD3D11LineBatchRenderer::Initialize(FD3D11RHI* InRHI)
     }
 
     RHI = InRHI;
+    GpuProfiler = nullptr;
     CurrentSceneView = nullptr;
 
     Vertices.reserve(MaxVertexCount);
@@ -39,13 +59,14 @@ bool FD3D11LineBatchRenderer::Initialize(FD3D11RHI* InRHI)
 
 void FD3D11LineBatchRenderer::Shutdown()
 {
-    DynamicVertexBuffer.Reset();
-    ConstantBuffer.Reset();
-    InputLayout.Reset();
-    PixelShader.Reset();
-    VertexShader.Reset();
+    UntrackComResource(DynamicVertexBuffer);
+    UntrackComResource(ConstantBuffer);
+    UntrackComResource(InputLayout);
+    UntrackComResource(PixelShader);
+    UntrackComResource(VertexShader);
 
     Vertices.clear();
+    GpuProfiler = nullptr;
     CurrentSceneView = nullptr;
     RHI = nullptr;
 }
@@ -141,21 +162,14 @@ bool FD3D11LineBatchRenderer::CreateConstantBuffer()
 
 bool FD3D11LineBatchRenderer::CreateDynamicVertexBuffer(uint32 InMaxVertexCount)
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr)
+    if (RHI == nullptr)
     {
         return false;
     }
 
-    D3D11_BUFFER_DESC Desc = {};
-    Desc.ByteWidth = sizeof(FLineVertex) * InMaxVertexCount;
-    Desc.Usage = D3D11_USAGE_DYNAMIC;
-    Desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    Desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    Desc.MiscFlags = 0;
-    Desc.StructureByteStride = 0;
-
-    return SUCCEEDED(
-        RHI->GetDevice()->CreateBuffer(&Desc, nullptr, DynamicVertexBuffer.GetAddressOf()));
+    return RHI->CreateVertexBuffer(nullptr, sizeof(FLineVertex) * InMaxVertexCount,
+                                   sizeof(FLineVertex), true,
+                                   DynamicVertexBuffer.GetAddressOf());
 }
 
 void FD3D11LineBatchRenderer::Flush()
@@ -197,6 +211,9 @@ void FD3D11LineBatchRenderer::Flush()
 
     RHI->SetPixelShader(PixelShader.Get());
 
+    const FGpuProfileScopeGuard ScopeGuard(GpuProfiler, "Line Flush", "Lines",
+                                           EGpuProfileDrawType::Draw,
+                                           static_cast<uint32>(Vertices.size()), 1);
     RHI->Draw(static_cast<uint32>(Vertices.size()), 0);
 
     Vertices.clear();

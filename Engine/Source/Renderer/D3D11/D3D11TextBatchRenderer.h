@@ -8,18 +8,25 @@
 #include "Renderer/Types/VertexTypes.h"
 #include "Renderer/Types/ShaderConstants.h"
 #include <vector>
+#include <memory>
 
 class FD3D11RHI;
+class FD3D11GpuProfiler;
 class FSceneView;
 struct FFontResource;
 struct FFontGlyph;
 struct FTextRenderItem;
+class FManualMemoryCategoryHandle;
 
 class FD3D11TextBatchRenderer
 {
   public:
+    FD3D11TextBatchRenderer();
+    ~FD3D11TextBatchRenderer();
+
     bool Initialize(FD3D11RHI* InRHI);
     void Shutdown();
+    void SetGpuProfiler(FD3D11GpuProfiler* InGpuProfiler) { GpuProfiler = InGpuProfiler; }
 
     void BeginFrame();
     void BeginFrame(const FSceneView* InSceneView);
@@ -63,7 +70,9 @@ class FD3D11TextBatchRenderer
     static constexpr uint32         MaxIndexCount = 65536;
     static constexpr const wchar_t* ShaderPath = L"Content\\Shader\\ShaderFont.hlsl";
 
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI* RHI = nullptr;
+    FD3D11GpuProfiler* GpuProfiler = nullptr;
 
     const FSceneView*    CurrentSceneView = nullptr;
     const FFontResource* CurrentFontResource = nullptr;

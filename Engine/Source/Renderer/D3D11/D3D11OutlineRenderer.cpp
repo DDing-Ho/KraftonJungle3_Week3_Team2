@@ -1,9 +1,11 @@
 #include "Renderer/D3D11/D3D11OutlineRenderer.h"
 
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/SceneView.h"
 #include "Renderer/Types/ShaderConstants.h"
 #include "Renderer/Types/VertexTypes.h"
+#include "Engine/MemoryProfiler.h"
 
 #include "Resources/Mesh/Cone.h"
 #include "Resources/Mesh/Cube.h"
@@ -15,9 +17,46 @@
 
 namespace
 {
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+
     constexpr FColor VisibleOutlineColor(1.0f, 0.72f, 0.20f, 1.0f);
     constexpr FColor OccludedOutlineColor(0.82f, 0.42f, 0.08f, 1.0f);
+
+    FString GetOutlineMeshProfileLabel(const FString& InPassName, EBasicMeshType InType)
+    {
+        switch (InType)
+        {
+        case EBasicMeshType::Cube:
+            return InPassName + "/Cube";
+        case EBasicMeshType::Quad:
+            return InPassName + "/Quad";
+        case EBasicMeshType::Triangle:
+            return InPassName + "/Triangle";
+        case EBasicMeshType::Sphere:
+            return InPassName + "/Sphere";
+        case EBasicMeshType::Cone:
+            return InPassName + "/Cone";
+        case EBasicMeshType::Cylinder:
+            return InPassName + "/Cylinder";
+        case EBasicMeshType::Ring:
+            return InPassName + "/Ring";
+        default:
+            return InPassName + "/Unknown";
+        }
+    }
 } // namespace
+
+FD3D11OutlineRenderer::FD3D11OutlineRenderer()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>(
+          "Renderer/FD3D11OutlineRenderer", sizeof(FD3D11OutlineRenderer)))
+{
+}
+
+FD3D11OutlineRenderer::~FD3D11OutlineRenderer() = default;
 
 bool FD3D11OutlineRenderer::Initialize(FD3D11RHI* InRHI)
 {
@@ -27,6 +66,7 @@ bool FD3D11OutlineRenderer::Initialize(FD3D11RHI* InRHI)
     }
 
     RHI = InRHI;
+    GpuProfiler = nullptr;
     CurrentSceneView = nullptr;
 
     if (!CreateShaders())
@@ -62,19 +102,20 @@ void FD3D11OutlineRenderer::Shutdown()
     RenderItems.clear();
     ReleaseBasicMeshes();
 
-    StencilMaskBlendState.Reset();
-    StencilMaskRasterizerState.Reset();
-    OutlineRasterizerState.Reset();
-    StencilMarkDepthStencilState.Reset();
-    OccludedDepthStencilState.Reset();
-    VisibleDepthStencilState.Reset();
+    UntrackComResource(StencilMaskBlendState);
+    UntrackComResource(StencilMaskRasterizerState);
+    UntrackComResource(OutlineRasterizerState);
+    UntrackComResource(StencilMarkDepthStencilState);
+    UntrackComResource(OccludedDepthStencilState);
+    UntrackComResource(VisibleDepthStencilState);
 
-    ConstantBuffer.Reset();
-    InputLayout.Reset();
-    PixelShader.Reset();
-    VertexShader.Reset();
+    UntrackComResource(ConstantBuffer);
+    UntrackComResource(InputLayout);
+    UntrackComResource(PixelShader);
+    UntrackComResource(VertexShader);
 
     CurrentSceneView = nullptr;
+    GpuProfiler = nullptr;
     RHI = nullptr;
 }
 
@@ -131,11 +172,17 @@ void FD3D11OutlineRenderer::EndFrame()
     const float BlendFactor[4] = {0.f, 0.f, 0.f, 0.f};
     RHI->SetBlendState(StencilMaskBlendState.Get(), BlendFactor);
     BindPipeline(StencilMaskRasterizerState.Get(), StencilMarkDepthStencilState.Get());
-    DrawItems(FColor::White(), 1.0f);
+    {
+        const FGpuProfileScopeGuard ScopeGuard(GpuProfiler, "Stencil Mask", "Outline");
+        DrawItems(FColor::White(), 1.0f, "Stencil Mask");
+    }
     RHI->ClearBlendState();
 
     BindPipeline(OutlineRasterizerState.Get(), VisibleDepthStencilState.Get());
-    DrawItems(GetVisibleOutlineColor(), DefaultOutlineScale);
+    {
+        const FGpuProfileScopeGuard ScopeGuard(GpuProfiler, "Visible Outline", "Outline");
+        DrawItems(GetVisibleOutlineColor(), DefaultOutlineScale, "Visible Outline");
+    }
 
     RenderItems.clear();
     CurrentSceneView = nullptr;
@@ -181,12 +228,10 @@ bool FD3D11OutlineRenderer::CreateConstantBuffer()
 
 bool FD3D11OutlineRenderer::CreateStates()
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr)
+    if (RHI == nullptr)
     {
         return false;
     }
-
-    ID3D11Device* Device = RHI->GetDevice();
 
     {
         D3D11_RASTERIZER_DESC Desc = {};
@@ -195,8 +240,7 @@ bool FD3D11OutlineRenderer::CreateStates()
         Desc.FrontCounterClockwise = FALSE;
         Desc.DepthClipEnable = TRUE;
 
-        if (FAILED(Device->CreateRasterizerState(&Desc,
-                                                 StencilMaskRasterizerState.GetAddressOf())))
+        if (!RHI->CreateRasterizerState(Desc, StencilMaskRasterizerState.GetAddressOf()))
         {
             return false;
         }
@@ -206,7 +250,7 @@ bool FD3D11OutlineRenderer::CreateStates()
         Desc.FrontCounterClockwise = FALSE;
         Desc.DepthClipEnable = TRUE;
 
-        if (FAILED(Device->CreateRasterizerState(&Desc, OutlineRasterizerState.GetAddressOf())))
+        if (!RHI->CreateRasterizerState(Desc, OutlineRasterizerState.GetAddressOf()))
         {
             return false;
         }
@@ -219,7 +263,7 @@ bool FD3D11OutlineRenderer::CreateStates()
         BlendDesc.RenderTarget[0].BlendEnable = FALSE;
         BlendDesc.RenderTarget[0].RenderTargetWriteMask = 0;
 
-        if (FAILED(Device->CreateBlendState(&BlendDesc, StencilMaskBlendState.GetAddressOf())))
+        if (!RHI->CreateBlendState(BlendDesc, StencilMaskBlendState.GetAddressOf()))
         {
             return false;
         }
@@ -239,8 +283,8 @@ bool FD3D11OutlineRenderer::CreateStates()
         StencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
         StencilDesc.BackFace = StencilDesc.FrontFace;
 
-        if (FAILED(Device->CreateDepthStencilState(&StencilDesc,
-                                                   StencilMarkDepthStencilState.GetAddressOf())))
+        if (!RHI->CreateDepthStencilState(StencilDesc,
+                                          StencilMarkDepthStencilState.GetAddressOf()))
         {
             return false;
         }
@@ -260,16 +304,14 @@ bool FD3D11OutlineRenderer::CreateStates()
         VisibleDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
         VisibleDesc.BackFace = VisibleDesc.FrontFace;
 
-        if (FAILED(Device->CreateDepthStencilState(&VisibleDesc,
-                                                   VisibleDepthStencilState.GetAddressOf())))
+        if (!RHI->CreateDepthStencilState(VisibleDesc, VisibleDepthStencilState.GetAddressOf()))
         {
             return false;
         }
 
         D3D11_DEPTH_STENCIL_DESC OccludedDesc = VisibleDesc;
         OccludedDesc.DepthFunc = D3D11_COMPARISON_GREATER;
-        if (FAILED(Device->CreateDepthStencilState(&OccludedDesc,
-                                                   OccludedDepthStencilState.GetAddressOf())))
+        if (!RHI->CreateDepthStencilState(OccludedDesc, OccludedDepthStencilState.GetAddressOf()))
         {
             return false;
         }
@@ -295,8 +337,8 @@ void FD3D11OutlineRenderer::ReleaseBasicMeshes()
 {
     for (int32 Index = 0; Index < static_cast<int32>(EBasicMeshType::Count); ++Index)
     {
-        MeshResources[Index].VertexBuffer.Reset();
-        MeshResources[Index].IndexBuffer.Reset();
+        UntrackComResource(MeshResources[Index].VertexBuffer);
+        UntrackComResource(MeshResources[Index].IndexBuffer);
         MeshResources[Index].IndexCount = 0;
         MeshResources[Index].Topology = EMeshPrimitiveTopology::TriangleList;
     }
@@ -324,7 +366,7 @@ bool FD3D11OutlineRenderer::CreateBasicMeshResource(const FVertexSimple* InVerti
     if (!RHI->CreateIndexBuffer(InIndices, sizeof(uint16) * InIndexCount, false,
                                 OutResource.IndexBuffer.GetAddressOf()))
     {
-        OutResource.VertexBuffer.Reset();
+        UntrackComResource(OutResource.VertexBuffer);
         return false;
     }
 
@@ -430,7 +472,8 @@ void FD3D11OutlineRenderer::BindPrimitiveTopology(EMeshPrimitiveTopology InTopol
     }
 }
 
-void FD3D11OutlineRenderer::DrawItems(const FColor& InColor, float InScale)
+void FD3D11OutlineRenderer::DrawItems(const FColor& InColor, float InScale,
+                                      const FString& InPassName)
 {
     if (RHI == nullptr || CurrentSceneView == nullptr)
     {
@@ -465,6 +508,9 @@ void FD3D11OutlineRenderer::DrawItems(const FColor& InColor, float InScale)
             continue;
         }
 
+        const FGpuProfileScopeGuard ScopeGuard(
+            GpuProfiler, GetOutlineMeshProfileLabel(InPassName, Item.MeshType), "Outline",
+            EGpuProfileDrawType::DrawIndexed, MeshResource->IndexCount, 1);
         RHI->DrawIndexed(MeshResource->IndexCount, 0, 0);
     }
 }

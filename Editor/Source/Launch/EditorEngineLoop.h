@@ -66,7 +66,7 @@ class FEditorEngineLoop : public IEngineLoop, public IEditorChromeHost
     // Win32의 move/size modal loop 안에서도 즉시 렌더링하기 위한 상태입니다.
     bool bIsInSizeMoveLoop = false;
     bool bIsRenderingDuringSizeMove = false;
-    bool bSavedVSyncEnabled = true;
+    bool bSavedVSyncEnabled = false;
 
     double PrevTime = 0.0;
 

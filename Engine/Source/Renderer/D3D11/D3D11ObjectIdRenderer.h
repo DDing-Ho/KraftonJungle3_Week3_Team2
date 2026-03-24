@@ -7,8 +7,12 @@
 #include "Renderer/Types/BasicMeshType.h"
 #include "Resources/Mesh/MeshPrimitiveTopology.h"
 
+#include <memory>
+
 class FD3D11RHI;
+class FD3D11GpuProfiler;
 class FSceneView;
+class FManualMemoryCategoryHandle;
 
 struct FVertexSimple;
 
@@ -33,8 +37,12 @@ class FD3D11ObjectIdRenderer
     static constexpr const wchar_t* ShaderPath = L"Content\\Shader\\ShaderObjectId.hlsl";
 
   public:
+    FD3D11ObjectIdRenderer();
+    ~FD3D11ObjectIdRenderer();
+
     bool Initialize(FD3D11RHI* InRHI);
     void Shutdown();
+    void SetGpuProfiler(FD3D11GpuProfiler* InGpuProfiler) { GpuProfiler = InGpuProfiler; }
 
     bool Resize(int32 InWidth, int32 InHeight);
 
@@ -75,7 +83,9 @@ class FD3D11ObjectIdRenderer
     bool ReadBackMousePixel(uint32& OutObjectId);
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI* RHI = nullptr;
+    FD3D11GpuProfiler* GpuProfiler = nullptr;
     const FSceneView* CurrentSceneView = nullptr;
 
     int32 TargetWidth = 0;

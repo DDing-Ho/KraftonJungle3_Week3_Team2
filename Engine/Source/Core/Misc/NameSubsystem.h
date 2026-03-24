@@ -3,6 +3,10 @@
 #include "Core/Containers/Map.h"
 #include "Core/HAL/PlatformTypes.h"
 
+#include <memory>
+
+class FManualMemoryCategoryHandle;
+
 namespace Engine::Core::Misc
 {
     class ENGINE_API FNameSubsystem
@@ -10,8 +14,8 @@ namespace Engine::Core::Misc
         friend struct FName;
 
       private:
-        FNameSubsystem() = default;
-        ~FNameSubsystem() = default;
+        FNameSubsystem();
+        ~FNameSubsystem();
         FNameSubsystem(const FNameSubsystem& Other) = delete; 
         FNameSubsystem& operator=(const FNameSubsystem& Other) = delete; 
 
@@ -28,5 +32,6 @@ namespace Engine::Core::Misc
         static FNameSubsystem* Instance;
         TMap<FString, int32>   StringToIndexMap;
         TArray<FString>        IndexToStringTable;
+        std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     };
 } // namespace Engine::Core::Misc

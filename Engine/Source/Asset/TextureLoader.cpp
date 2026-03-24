@@ -1,4 +1,5 @@
 #include "Core/CoreMinimal.h"
+#include "Engine/MemoryProfiler.h"
 #include "TextureLoader.h"
 
 #include "Renderer/RenderAsset/TextureResource.h"
@@ -78,7 +79,28 @@ namespace
     }
 } // namespace
 
-FTextureLoader::FTextureLoader(FD3D11RHI* InRHI) : RHI(InRHI) {}
+FTextureLoader::FTextureLoader(FD3D11RHI* InRHI)
+    : MemoryTrackHandle(
+          std::make_unique<FManualMemoryCategoryHandle>("Asset/FTextureLoader",
+                                                        sizeof(FTextureLoader))),
+      RHI(InRHI)
+{
+}
+
+FTextureLoader::~FTextureLoader()
+{
+    for (const auto& [_, Resource] : ResourceCache)
+    {
+        if (Resource)
+        {
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->SRV.Get());
+            FMemoryProfiler::Get().UnregisterGpuResource(Resource->Texture.Get());
+        }
+    }
+
+    ResourceCache.clear();
+    DecodeCache.clear();
+}
 
 bool FTextureLoader::CanLoad(const FWString& Path, const FAssetLoadParams& Params) const
 {
@@ -334,8 +356,8 @@ bool FTextureLoader::CreateTextureResource(const FDecodedImage&         Image,
         TextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
         TextureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
-        Hr = RHI->GetDevice()->CreateTexture2D(&TextureDesc, nullptr, &Texture);
-        if (FAILED(Hr))
+        if (!RHI->CreateTexture2D(TextureDesc, nullptr, Texture.GetAddressOf(),
+                                  EGpuResourceKind::Texture2D))
         {
             return false;
         }
@@ -346,9 +368,9 @@ bool FTextureLoader::CreateTextureResource(const FDecodedImage&         Image,
         SRVDesc.Texture2D.MostDetailedMip = 0;
         SRVDesc.Texture2D.MipLevels = static_cast<UINT>(-1);
 
-        Hr = RHI->GetDevice()->CreateShaderResourceView(Texture.Get(), &SRVDesc, &SRV);
-        if (FAILED(Hr))
+        if (!RHI->CreateShaderResourceView(Texture.Get(), &SRVDesc, SRV.GetAddressOf()))
         {
+            FMemoryProfiler::Get().UnregisterGpuResource(Texture.Get());
             return false;
         }
 
@@ -372,8 +394,8 @@ bool FTextureLoader::CreateTextureResource(const FDecodedImage&         Image,
         InitialData.pSysMem = Image.Pixels.data();
         InitialData.SysMemPitch = RowPitch;
 
-        Hr = RHI->GetDevice()->CreateTexture2D(&TextureDesc, &InitialData, &Texture);
-        if (FAILED(Hr))
+        if (!RHI->CreateTexture2D(TextureDesc, &InitialData, Texture.GetAddressOf(),
+                                  EGpuResourceKind::Texture2D))
         {
             return false;
         }
@@ -384,9 +406,9 @@ bool FTextureLoader::CreateTextureResource(const FDecodedImage&         Image,
         SRVDesc.Texture2D.MostDetailedMip = 0;
         SRVDesc.Texture2D.MipLevels = 1;
 
-        Hr = RHI->GetDevice()->CreateShaderResourceView(Texture.Get(), &SRVDesc, &SRV);
-        if (FAILED(Hr))
+        if (!RHI->CreateShaderResourceView(Texture.Get(), &SRVDesc, SRV.GetAddressOf()))
         {
+            FMemoryProfiler::Get().UnregisterGpuResource(Texture.Get());
             return false;
         }
     }

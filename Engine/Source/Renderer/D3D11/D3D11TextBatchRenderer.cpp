@@ -1,14 +1,22 @@
 #include "Renderer/D3D11/D3D11TextBatchRenderer.h"
 
+#include "Renderer/D3D11/D3D11GpuProfiler.h"
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/RenderAsset/FontResource.h"
 #include "Renderer/SceneView.h"
+#include "Engine/MemoryProfiler.h"
 
 #include <algorithm>
 #include <functional>
 
 namespace
 {
+    template <typename T> void UntrackComResource(TComPtr<T>& InResource)
+    {
+        FMemoryProfiler::Get().UnregisterGpuResource(InResource.Get());
+        InResource.Reset();
+    }
+
     constexpr float DefaultLineHeight = 16.0f;
 
     float ComputePlacementDepth(const FSceneView* InSceneView, const FRenderPlacement& InPlacement)
@@ -50,6 +58,14 @@ namespace
     };
 } // namespace
 
+FD3D11TextBatchRenderer::FD3D11TextBatchRenderer()
+    : MemoryTrackHandle(std::make_unique<FManualMemoryCategoryHandle>(
+          "Renderer/FD3D11TextBatchRenderer", sizeof(FD3D11TextBatchRenderer)))
+{
+}
+
+FD3D11TextBatchRenderer::~FD3D11TextBatchRenderer() = default;
+
 bool FD3D11TextBatchRenderer::Initialize(FD3D11RHI* InRHI)
 {
     if (InRHI == nullptr)
@@ -58,6 +74,7 @@ bool FD3D11TextBatchRenderer::Initialize(FD3D11RHI* InRHI)
     }
 
     RHI = InRHI;
+    GpuProfiler = nullptr;
     CurrentSceneView = nullptr;
     CurrentFontResource = nullptr;
     CurrentPlacementMode = ERenderPlacementMode::World;
@@ -95,23 +112,24 @@ bool FD3D11TextBatchRenderer::Initialize(FD3D11RHI* InRHI)
 
 void FD3D11TextBatchRenderer::Shutdown()
 {
-    RasterizerState.Reset();
-    DepthStencilState.Reset();
-    AlphaBlendState.Reset();
-    SamplerState.Reset();
+    UntrackComResource(RasterizerState);
+    UntrackComResource(DepthStencilState);
+    UntrackComResource(AlphaBlendState);
+    UntrackComResource(SamplerState);
 
-    DynamicIndexBuffer.Reset();
-    DynamicVertexBuffer.Reset();
-    ConstantBuffer.Reset();
+    UntrackComResource(DynamicIndexBuffer);
+    UntrackComResource(DynamicVertexBuffer);
+    UntrackComResource(ConstantBuffer);
 
-    InputLayout.Reset();
-    PixelShader.Reset();
-    VertexShader.Reset();
+    UntrackComResource(InputLayout);
+    UntrackComResource(PixelShader);
+    UntrackComResource(VertexShader);
 
     Vertices.clear();
     Indices.clear();
     PendingTextItems.clear();
 
+    GpuProfiler = nullptr;
     CurrentFontResource = nullptr;
     CurrentSceneView = nullptr;
     CurrentPlacementMode = ERenderPlacementMode::World;
@@ -386,6 +404,9 @@ void FD3D11TextBatchRenderer::Flush(const FSceneView* InSceneView)
     ID3D11SamplerState* Sampler = SamplerState.Get();
     Context->PSSetSamplers(0, 1, &Sampler);
 
+    const FGpuProfileScopeGuard ScopeGuard(
+        GpuProfiler, "Text Flush", "Text", EGpuProfileDrawType::DrawIndexed,
+        static_cast<uint32>(Indices.size()), 1);
     RHI->DrawIndexed(static_cast<uint32>(Indices.size()), 0, 0);
 
     ID3D11ShaderResourceView* NullSRV = nullptr;
@@ -542,29 +563,18 @@ bool FD3D11TextBatchRenderer::CreateStates()
 
 bool FD3D11TextBatchRenderer::CreateBuffers()
 {
-    if (RHI == nullptr || RHI->GetDevice() == nullptr)
+    if (RHI == nullptr)
     {
         return false;
     }
 
-    D3D11_BUFFER_DESC VertexBufferDesc = {};
-    VertexBufferDesc.ByteWidth = sizeof(FFontVertex) * MaxVertexCount;
-    VertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    VertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    VertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-    if (FAILED(RHI->GetDevice()->CreateBuffer(&VertexBufferDesc, nullptr,
-                                              DynamicVertexBuffer.GetAddressOf())))
+    if (!RHI->CreateVertexBuffer(nullptr, sizeof(FFontVertex) * MaxVertexCount,
+                                 sizeof(FFontVertex), true,
+                                 DynamicVertexBuffer.GetAddressOf()))
     {
         return false;
     }
 
-    D3D11_BUFFER_DESC IndexBufferDesc = {};
-    IndexBufferDesc.ByteWidth = sizeof(uint32) * MaxIndexCount;
-    IndexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    IndexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    IndexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-    return SUCCEEDED(RHI->GetDevice()->CreateBuffer(&IndexBufferDesc, nullptr,
-                                                    DynamicIndexBuffer.GetAddressOf()));
+    return RHI->CreateIndexBuffer(nullptr, sizeof(uint32) * MaxIndexCount, true,
+                                  DynamicIndexBuffer.GetAddressOf());
 }

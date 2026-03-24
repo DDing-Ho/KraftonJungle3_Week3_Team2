@@ -4,8 +4,12 @@
 #include "Renderer/D3D11/D3D11Common.h"
 #include "Renderer/Types/VertexTypes.h"
 
+#include <memory>
+
 class FD3D11RHI;
+class FD3D11GpuProfiler;
 class FSceneView;
+class FManualMemoryCategoryHandle;
 
 class FD3D11LineBatchRenderer
 {
@@ -15,8 +19,12 @@ class FD3D11LineBatchRenderer
     static constexpr uint32 DefaultMaxLineCount = 8192;
 
   public:
+    FD3D11LineBatchRenderer();
+    ~FD3D11LineBatchRenderer();
+
     bool Initialize(FD3D11RHI* InRHI);
     void Shutdown();
+    void SetGpuProfiler(FD3D11GpuProfiler* InGpuProfiler) { GpuProfiler = InGpuProfiler; }
 
     void BeginFrame(const FSceneView* InSceneView);
     void AddLine(const FVector& InStart, const FVector& InEnd, const FColor& InColor);
@@ -29,7 +37,9 @@ class FD3D11LineBatchRenderer
     bool CreateDynamicVertexBuffer(uint32 InMaxVertexCount);
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI* RHI = nullptr;
+    FD3D11GpuProfiler* GpuProfiler = nullptr;
     const FSceneView* CurrentSceneView = nullptr;
 
     TArray<FLineVertex> Vertices;

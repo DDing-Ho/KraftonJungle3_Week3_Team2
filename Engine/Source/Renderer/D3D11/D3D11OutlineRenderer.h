@@ -9,9 +9,13 @@
 #include "Renderer/Types/RenderItem.h"
 #include "Resources/Mesh/MeshPrimitiveTopology.h"
 
+#include <memory>
+
 class FD3D11RHI;
+class FD3D11GpuProfiler;
 class FSceneView;
 struct FVertexSimple;
+class FManualMemoryCategoryHandle;
 
 struct FOutlineRenderItem
 {
@@ -34,8 +38,12 @@ class FD3D11OutlineRenderer
     static constexpr float DefaultOutlineScale = 1.04f;
 
   public:
+    FD3D11OutlineRenderer();
+    ~FD3D11OutlineRenderer();
+
     bool Initialize(FD3D11RHI* InRHI);
     void Shutdown();
+    void SetGpuProfiler(FD3D11GpuProfiler* InGpuProfiler) { GpuProfiler = InGpuProfiler; }
 
     void BeginFrame(const FSceneView* InSceneView);
     void AddPrimitive(const FPrimitiveRenderItem& InItem);
@@ -71,10 +79,12 @@ class FD3D11OutlineRenderer
     void BindPipeline(ID3D11RasterizerState* InRasterizerState,
                       ID3D11DepthStencilState* InDepthStencilState);
     void BindPrimitiveTopology(EMeshPrimitiveTopology InTopology);
-    void DrawItems(const FColor& InColor, float InScale);
+    void DrawItems(const FColor& InColor, float InScale, const FString& InPassName);
 
   private:
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
     FD3D11RHI*        RHI = nullptr;
+    FD3D11GpuProfiler* GpuProfiler = nullptr;
     const FSceneView* CurrentSceneView = nullptr;
 
     TArray<FOutlineRenderItem> RenderItems;

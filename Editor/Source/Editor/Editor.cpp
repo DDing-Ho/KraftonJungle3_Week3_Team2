@@ -4,12 +4,15 @@
 
 #include "Core/Path.h"
 #include "Engine/Component/Core/SceneComponent.h"
+#include "Engine/MemoryProfiler.h"
 #include "Engine/EngineStatics.h"
 #include "Engine/Game/Actor.h"
 #include "SceneIO/SceneSerializer.h"
 #include "Panel/ConsolePanel.h"
 #include "Panel/ContentBrowserPanel.h"
 #include "Panel/ControlPanel.h"
+#include "Panel/GpuProfilerPanel.h"
+#include "Panel/MemoryProfilerPanel.h"
 #include "Panel/OutlinerPanel.h"
 #include "Panel/PanelManager.h"
 #include "Panel/PropertiesPanel.h"
@@ -238,6 +241,14 @@ namespace
     }
 } // namespace
 
+FEditor::FEditor()
+    : MemoryTrackHandle(
+          std::make_unique<FManualMemoryCategoryHandle>("Editor/FEditor", sizeof(FEditor)))
+{
+}
+
+FEditor::~FEditor() = default;
+
 // class FSamplePanel : public IPanel
 //{
 // public:
@@ -306,6 +317,8 @@ void FEditor::Create()
     PanelManager->RegisterPanelInstance<FConsolePanel>(&LogBuffer);
     PanelManager->RegisterPanelType<FContentBrowserPanel>();
     PanelManager->RegisterPanelInstance<FControlPanel>();
+    PanelManager->RegisterPanelInstance<FGpuProfilerPanel>();
+    PanelManager->RegisterPanelInstance<FMemoryProfilerPanel>();
     PanelManager->RegisterPanelInstance<FOutlinerPanel>();
     PanelManager->RegisterPanelInstance<FPropertiesPanel>();
     PanelManager->RegisterPanelInstance<FStatePanel>();
@@ -365,8 +378,10 @@ void FEditor::SetChromeHost(IEditorChromeHost* InChromeHost)
     EditorChrome.SetHost(InChromeHost);
 }
 
-void FEditor::SetRuntimeServices(FD3D11RHI* InRHI, UAssetManager* InAssetManager)
+void FEditor::SetRuntimeServices(FRendererModule* InRenderer, FD3D11RHI* InRHI,
+                                 UAssetManager* InAssetManager)
 {
+    EditorContext.Renderer = InRenderer;
     EditorContext.RHI = InRHI;
     EditorContext.AssetManager = InAssetManager;
     ResolveSceneAssetReferences(CurScene);
@@ -632,6 +647,7 @@ void FEditor::Tick(float DeltaTime, Engine::ApplicationCore::FInputSystem* Input
     }
 
     BuildRenderData();
+    FMemoryProfiler::Get().SampleHistoryFrame();
 }
 
 void FEditor::OnWindowResized(float Width, float Height)

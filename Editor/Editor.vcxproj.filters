@@ -114,6 +114,12 @@
     <ClCompile Include="Source\Panel\ControlPanel.cpp">
       <Filter>Source\Panel</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Panel\GpuProfilerPanel.cpp">
+      <Filter>Source\Panel</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Panel\MemoryProfilerPanel.cpp">
+      <Filter>Source\Panel</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Panel\OutlinerPanel.cpp">
       <Filter>Source\Panel</Filter>
     </ClCompile>
@@ -240,6 +246,12 @@
       <Filter>Source\Panel</Filter>
     </ClInclude>
     <ClInclude Include="Source\Panel\ControlPanel.h">
+      <Filter>Source\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Panel\GpuProfilerPanel.h">
+      <Filter>Source\Panel</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Panel\MemoryProfilerPanel.h">
       <Filter>Source\Panel</Filter>
     </ClInclude>
     <ClInclude Include="Source\Panel\OutlinerPanel.h">

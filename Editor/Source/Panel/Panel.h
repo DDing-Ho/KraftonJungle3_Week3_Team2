@@ -2,11 +2,13 @@
 
 #include "Core/CoreMinimal.h"
 
+#include <memory>
 #include <typeindex>
 
 struct FEditorContext;
 struct FPanelOpenRequest;
 class IPanel;
+class FManualMemoryCategoryHandle;
 
 enum class EPanelOpenPolicy
 {
@@ -104,8 +106,8 @@ public:
 class IPanel
 {
 public:
-    IPanel() = default;
-    virtual ~IPanel() = default;
+    IPanel();
+    virtual ~IPanel();
 
     // 패널이 에디터 컨텍스트와 PanelService를 참조할 수 있게 연결합니다.
     virtual void Initialize(FEditorContext* InContext, IPanelService* InPanelService);
@@ -146,6 +148,7 @@ public:
     void SetOpen(bool bInOpen);
     // 현재 열림 상태를 반전합니다.
     void ToggleOpen();
+    void TrackMemoryCategory(const FString& InCategory, size_t InSize);
 
 protected:
     // 패널이 에디터 전역 상태를 읽을 때 사용하는 컨텍스트입니다.
@@ -157,6 +160,7 @@ protected:
     FEditorContext* Context = nullptr;
     IPanelService* PanelService = nullptr;
     FString ContextKey;
+    std::unique_ptr<FManualMemoryCategoryHandle> MemoryTrackHandle;
 
 private:
     bool bOpen = false;
