@@ -510,7 +510,7 @@ bool FEditorEngineLoop::RunFrameOnceWithoutResize()
     InputSystem->BeginFrame();
     UpdateFrameTiming();
 
-    Editor->SetMainLoopFPS(MainLoopFPS);
+    Editor->SetMainLoopTiming(MainLoopFPS, RawDeltaTime);
     
     Editor->Tick(DeltaTime, InputSystem);
 
@@ -526,20 +526,28 @@ bool FEditorEngineLoop::RunFrameOnceWithoutResize()
 void FEditorEngineLoop::UpdateFrameTiming()
 {
     const double CurrentTime = FPlatformTime::Seconds();
-    double RawDeltaTime = CurrentTime - PrevTime;
+    double RawDeltaSeconds = CurrentTime - PrevTime;
     PrevTime = CurrentTime;
 
-    if (RawDeltaTime < (1.0 / 1000.0))
+    if (RawDeltaSeconds <= 0.0)
     {
-        RawDeltaTime = 1.0 / 1000.0;
-    }
-    else if (RawDeltaTime > (1.0 / 15.0))
-    {
-        RawDeltaTime = 1.0 / 15.0;
+        RawDeltaSeconds = 1.0 / 1000000.0;
     }
 
-    DeltaTime = static_cast<float>(RawDeltaTime);
-    MainLoopFPS = static_cast<float>(1.0 / RawDeltaTime);
+    RawDeltaTime = static_cast<float>(RawDeltaSeconds);
+    MainLoopFPS = static_cast<float>(1.0 / RawDeltaSeconds);
+
+    double ClampedDeltaSeconds = RawDeltaSeconds;
+    if (ClampedDeltaSeconds < (1.0 / 1000.0))
+    {
+        ClampedDeltaSeconds = 1.0 / 1000.0;
+    }
+    else if (ClampedDeltaSeconds > (1.0 / 15.0))
+    {
+        ClampedDeltaSeconds = 1.0 / 15.0;
+    }
+
+    DeltaTime = static_cast<float>(ClampedDeltaSeconds);
 }
 
 Engine::ApplicationCore::FWindowsApplication* FEditorEngineLoop::GetWindowsApplication() const

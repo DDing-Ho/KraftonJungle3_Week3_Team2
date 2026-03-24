@@ -81,10 +81,11 @@ class FEditor
                             UAssetManager* InAssetManager);
 
     void OnWindowResized(float Width, float Height);
-    void SetMainLoopFPS(float FPS)
+    void SetMainLoopTiming(float FPS, float InRawDeltaTime)
     {
         CurFPS = FPS;
         EditorContext.CurrentFPS = FPS;
+        EditorContext.RawDeltaTime = InRawDeltaTime;
     }
 
     void     CreateNewScene();

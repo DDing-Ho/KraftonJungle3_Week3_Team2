@@ -18,7 +18,8 @@ void FStatePanel::Draw()
 {
 	if (ImGui::Begin("State Panel", nullptr))
 	{
-		ImGui::Text("FPS                     : %.1f  (%.3f ms)", GetContext()->CurrentFPS, GetContext()->DeltaTime * 1000.f);
+		ImGui::Text("FPS                     : %.1f  (%.3f ms)", GetContext()->CurrentFPS, GetContext()->RawDeltaTime * 1000.f);
+		ImGui::Text("Tick DeltaTime          : %.3f ms", GetContext()->DeltaTime * 1000.f);
 		ImGui::Text("TotalAllocationCount    : %u", UEngineStatics::TotalAllocationCount);
 		ImGui::Text("Heap Usage              : %.2f KB", UEngineStatics::TotalAllocatedBytes / 1024.f);
 
