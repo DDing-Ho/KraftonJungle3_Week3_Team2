@@ -12,7 +12,7 @@ namespace Engine::Component
         DECLARE_RTTI(UAtlasTextComponent, UAtlasComponent)
 
       public:
-        UAtlasTextComponent() = default;
+        UAtlasTextComponent();
         ~UAtlasTextComponent() override = default;
 
         const FString& GetText() const { return Text; }

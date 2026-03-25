@@ -55,6 +55,12 @@ public:
     {
         bShowBillboardText = bInShowBillboardText;
     }
+    bool IsTextTileVisible() const { return bShowTextTile; }
+    void SetTextTileVisible(bool bInShowTextTile)
+    {
+        bShowTextTile = bInShowTextTile;
+    }
+
 
     EEditorShowFlags BuildEditorShowFlags(bool bIncludeGizmo) const
     {
@@ -101,6 +107,10 @@ public:
         {
             Flags |= ESceneShowFlags::SF_UUIDText;
         }
+        if (bShowTextTile)
+        {
+            Flags |= ESceneShowFlags::SF_TextTile;
+        }
         return Flags;
     }
 
@@ -115,4 +125,5 @@ private:
     bool           bShowScenePrimitives = true;
     bool           bShowSceneSprites = true;
     bool           bShowBillboardText = true;
+    bool           bShowTextTile = true;
 };

@@ -23,8 +23,8 @@ namespace
 
         /*const auto* SubUVComponent =
             Cast<Engine::Component::USubUVComponent>(SpriteComponent.GetClass());*/
-         const auto* SubUVComponent =
-             dynamic_cast<const Engine::Component::USubUVComponent*>(&SpriteComponent);
+        const auto* SubUVComponent =
+            dynamic_cast<const Engine::Component::USubUVComponent*>(&SpriteComponent);
         if (SubUVComponent == nullptr)
         {
             return;
@@ -139,35 +139,43 @@ void FScene::BuildRenderData(FSceneRenderData& OutRenderData, ESceneShowFlags In
                 continue;
             }
 
-#pragma region __ATLAS_TEXT__
-            if (auto* TextComponent = Cast<Engine::Component::UAtlasTextComponent>(Component))
+#pragma region __TEXT__
+            else if (auto* TextComponent = Cast<Engine::Component::UAtlasTextComponent>(Component))
             {
-                if (TextComponent->GetText().empty())
+                if (!IsFlagSet(InShowFlags, ESceneShowFlags::SF_BillboardText))
                 {
                     continue;
                 }
 
-                if (!IsFlagSet(InShowFlags, ESceneShowFlags::SF_BillboardText) &&
-                    TextComponent->GetBillboard())
+                // ================= Placement 생성 =================
+                FRenderPlacement TextPlacement;
+                TextPlacement.World = TextComponent->GetRenderPlacementWorld(*Actor);
+                TextPlacement.WorldOffset = TextComponent->GetRenderPlacementOffset(*Actor);
+
+                if (TextComponent->GetBillboard())
                 {
-                    continue;
+                    TextPlacement.Mode = ERenderPlacementMode::WorldBillboard;
+                }
+                else
+                {
+                    TextPlacement.Mode = ERenderPlacementMode::World;
                 }
 
-                auto* UUIDTextComponent = Cast<Engine::Component::UUUIDComponent>(TextComponent);
-                if (!IsFlagSet(InShowFlags, ESceneShowFlags::SF_UUIDText) && UUIDTextComponent)
-                {
-                    continue;
-                }
-
-                FTextRenderItem TextItem = {};
+                // ================= Text Item =================
+                FTextRenderItem TextItem;
                 TextItem.FontResource = TextComponent->GetFontResource();
                 TextItem.Text = TextComponent->GetText();
                 TextItem.Color = TextComponent->GetColor();
-                TextItem.Placement.Mode = TextComponent->GetBillboard()
-                                              ? ERenderPlacementMode::WorldBillboard
-                                              : ERenderPlacementMode::World;
-                TextItem.Placement.World = TextComponent->GetRenderPlacementWorld(*Actor);
-                TextItem.Placement.WorldOffset = TextComponent->GetRenderPlacementOffset(*Actor);
+
+                TextItem.Placement = TextPlacement;
+
+                // ================= Fallback Placement =================
+                FRenderPlacement TextTilePlacement = TextPlacement;
+                TextTilePlacement.Mode = ERenderPlacementMode::World;
+
+                TextItem.FallbackPlacement = TextTilePlacement;
+                TextItem.bUseFallbackPlacement = true;
+
                 TextItem.TextScale = TextComponent->GetTextScale();
                 TextItem.LetterSpacing = TextComponent->GetLetterSpacing();
                 TextItem.LineSpacing = TextComponent->GetLineSpacing();
@@ -175,11 +183,44 @@ void FScene::BuildRenderData(FSceneRenderData& OutRenderData, ESceneShowFlags In
                 TextItem.State.ObjectId = ObjectId;
                 TextItem.State.bShowBounds = Actor->IsShowBounds();
                 TextItem.State.SetVisible(Actor->IsVisible());
-                TextItem.State.SetPickable(false);
+                TextItem.State.SetPickable(Actor->IsPickable());
                 TextItem.State.SetSelected(Actor->IsSelected());
                 TextItem.State.SetHovered(Actor->IsHovered());
 
                 OutRenderData.Texts.push_back(TextItem);
+
+                // ================= UUID 제외 =================
+                const bool bIsUUID =
+                    (Cast<Engine::Component::UUUIDComponent>(TextComponent) != nullptr);
+
+                if (bIsUUID)
+                {
+                    continue;
+                }
+
+                if (!IsFlagSet(InShowFlags, ESceneShowFlags::SF_TextTile))
+                {
+                    continue;
+                }
+
+                // ================= Text Tile =================
+                FSpriteRenderItem TextTileItem = {};
+                TextTileItem.TextureResource = TextComponent->GetTextureResource();
+                TextTileItem.Color = FColor::White();
+
+                TextTileItem.UVMin = FVector2(0.0f, 0.0f);
+                TextTileItem.UVMax = FVector2(1.0f, 1.0f);
+
+                TextTileItem.Placement = TextTilePlacement;
+
+                TextTileItem.State.ObjectId = ObjectId;
+                TextTileItem.State.bShowBounds = Actor->IsShowBounds();
+                TextTileItem.State.SetVisible(Actor->IsVisible());
+                TextTileItem.State.SetPickable(Actor->IsPickable());
+                TextTileItem.State.SetSelected(Actor->IsSelected());
+                TextTileItem.State.SetHovered(Actor->IsHovered());
+
+                OutRenderData.Sprites.push_back(TextTileItem);
             }
 #pragma endregion
 

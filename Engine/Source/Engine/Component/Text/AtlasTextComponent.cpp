@@ -8,6 +8,11 @@
 
 namespace Engine::Component
 {
+    UAtlasTextComponent::UAtlasTextComponent()
+    {
+        SetTexturePath("text.png");
+    }
+
     void UAtlasTextComponent::SetText(const FString& InText) { Text = InText; }
 
     void UAtlasTextComponent::SetFontResource(FFontResource* InFontResource)
@@ -68,6 +73,7 @@ namespace Engine::Component
 
     void UAtlasTextComponent::ResolveAssetReferences(UAssetManager* InAssetManager)
     {
+        USpriteComponent::ResolveAssetReferences(InAssetManager);
         FontResource = nullptr;
 
         if (InAssetManager == nullptr || FontPath.empty())

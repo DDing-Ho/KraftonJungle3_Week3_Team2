@@ -3,13 +3,14 @@
 #include "Renderer/D3D11/D3D11RHI.h"
 #include "Renderer/RenderAsset/FontResource.h"
 #include "Renderer/SceneView.h"
+#include "Renderer/Types//RenderItem.h"
 
 #include <algorithm>
 #include <functional>
 
 namespace
 {
-    constexpr float DefaultLineHeight = 16.0f;
+    constexpr float  DefaultLineHeight = 16.0f;
     constexpr uint32 Utf8ReplacementCodePoint = static_cast<uint32>('?');
 
     TArray<uint32> DecodeUtf8CodePoints(const FString& InText)
@@ -35,20 +36,16 @@ namespace
             uint32 CodePoint = Utf8ReplacementCodePoint;
             size_t SequenceLength = 1;
 
-            auto IsContinuationByte =
-                [Bytes, ByteCount](size_t InIndex)
-            {
-                return InIndex < ByteCount && (Bytes[InIndex] & 0xC0) == 0x80;
-            };
+            auto IsContinuationByte = [Bytes, ByteCount](size_t InIndex)
+            { return InIndex < ByteCount && (Bytes[InIndex] & 0xC0) == 0x80; };
 
             if ((Lead & 0xE0) == 0xC0)
             {
                 SequenceLength = 2;
                 if (IsContinuationByte(Index + 1))
                 {
-                    const uint32 Candidate =
-                        ((static_cast<uint32>(Lead & 0x1F)) << 6) |
-                        static_cast<uint32>(Bytes[Index + 1] & 0x3F);
+                    const uint32 Candidate = ((static_cast<uint32>(Lead & 0x1F)) << 6) |
+                                             static_cast<uint32>(Bytes[Index + 1] & 0x3F);
 
                     if (Candidate >= 0x80)
                     {
@@ -61,10 +58,9 @@ namespace
                 SequenceLength = 3;
                 if (IsContinuationByte(Index + 1) && IsContinuationByte(Index + 2))
                 {
-                    const uint32 Candidate =
-                        ((static_cast<uint32>(Lead & 0x0F)) << 12) |
-                        ((static_cast<uint32>(Bytes[Index + 1] & 0x3F)) << 6) |
-                        static_cast<uint32>(Bytes[Index + 2] & 0x3F);
+                    const uint32 Candidate = ((static_cast<uint32>(Lead & 0x0F)) << 12) |
+                                             ((static_cast<uint32>(Bytes[Index + 1] & 0x3F)) << 6) |
+                                             static_cast<uint32>(Bytes[Index + 2] & 0x3F);
 
                     if (Candidate >= 0x800 && !(Candidate >= 0xD800 && Candidate <= 0xDFFF))
                     {
@@ -233,7 +229,12 @@ void FD3D11TextBatchRenderer::AddText(const FTextRenderItem& InItem)
         return;
     }
 
-    if (!InItem.State.IsVisible() || InItem.Text.empty())
+    if (!InItem.State.IsVisible())
+    {
+        return;
+    }
+
+    if (InItem.FontResource != nullptr && InItem.Text.empty())
     {
         return;
     }
@@ -460,42 +461,30 @@ void FD3D11TextBatchRenderer::AppendNullFontFallback(const FTextRenderItem& InIt
         BeginBatch(MakeBatchKey(InItem));
     }
 
-    const FMatrix& PlacementWorld = InItem.Placement.World;
-    const FVector  Origin = PlacementWorld.GetOrigin() + InItem.Placement.WorldOffset;
+    const FRenderPlacement& FallbackPlacement =
+        InItem.bUseFallbackPlacement ? InItem.FallbackPlacement : InItem.Placement;
 
-    FVector RightAxis;
-    FVector UpAxis;
+    const FMatrix& PlacementWorld = FallbackPlacement.World;
+    const FVector  Origin = PlacementWorld.GetOrigin() + FallbackPlacement.WorldOffset;
 
-    if (InItem.Placement.IsBillboard())
+    FVector QuadRight;
+    FVector QuadUp;
+
+    if (FallbackPlacement.IsBillboard())
     {
         const FMatrix CameraWorld = CurrentSceneView->GetViewMatrix().GetInverse();
-        RightAxis = CameraWorld.GetRightVector().GetSafeNormal();
-        UpAxis = CameraWorld.GetUpVector().GetSafeNormal();
-    }
-    else
-    {
-        RightAxis = PlacementWorld.GetRightVector().GetSafeNormal();
-        UpAxis = PlacementWorld.GetUpVector().GetSafeNormal();
-    }
-
-    float Width = 1.0f;
-    float Height = 1.0f;
-
-    if (InItem.LayoutMode == ETextLayoutMode::FitToBox)
-    {
         const FVector WorldScale = PlacementWorld.GetScaleVector();
-        Width = std::max(WorldScale.X, 1.0f);
-        Height = std::max(WorldScale.Y, 1.0f);
+
+        QuadRight = CameraWorld.GetRightVector().GetSafeNormal() * WorldScale.X;
+        QuadUp = CameraWorld.GetUpVector().GetSafeNormal() * WorldScale.Z;
     }
     else
     {
-        const float FallbackExtent = std::max(InItem.TextScale, 1.0f);
-        Width = FallbackExtent;
-        Height = FallbackExtent;
+        // 실제 타일과 같은 축/크기를 그대로 사용
+        QuadRight = PlacementWorld.GetForwardVector();
+        QuadUp = PlacementWorld.GetUpVector();
     }
 
-    const FVector QuadRight = RightAxis * Width;
-    const FVector QuadUp = UpAxis * Height;
     const FVector BottomLeft = Origin - QuadRight * 0.5f - QuadUp * 0.5f;
 
     AppendSolidColorQuad(BottomLeft, QuadRight, -QuadUp, RenderDebugColors::MissingGlyph);
@@ -528,7 +517,7 @@ void FD3D11TextBatchRenderer::AppendTextItemNatural(const FTextRenderItem& InIte
     }
     else
     {
-        RightAxis = PlacementWorld.GetRightVector().GetSafeNormal();
+        RightAxis = PlacementWorld.GetForwardVector().GetSafeNormal();
         UpAxis = PlacementWorld.GetUpVector().GetSafeNormal();
     }
 
@@ -604,7 +593,7 @@ void FD3D11TextBatchRenderer::AppendTextItemFitToBox(const FTextRenderItem& InIt
     }
     else
     {
-        RightAxis = PlacementWorld.GetRightVector().GetSafeNormal();
+        RightAxis = PlacementWorld.GetForwardVector().GetSafeNormal();
         UpAxis = PlacementWorld.GetUpVector().GetSafeNormal();
     }
 
@@ -844,8 +833,6 @@ void FD3D11TextBatchRenderer::AppendSolidColorQuad(const FVector& InBottomLeft,
     Indices.push_back(BaseVertex + 1);
     Indices.push_back(BaseVertex + 3);
 }
-
-
 
 ID3D11ShaderResourceView*
 FD3D11TextBatchRenderer::ResolveFontSRV(const FFontResource* InFontResource) const

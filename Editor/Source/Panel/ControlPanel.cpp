@@ -240,6 +240,12 @@ void FControlPanel::DrawShowFlagsSection() const
     {
         RenderSetting.SetBillboardTextVisible(bShowBillboardText);
     }
+
+    bool bShowTextTile = RenderSetting.IsTextTileVisible();
+    if (ImGui::Checkbox("Scene Text Tile", &bShowTextTile))
+    {
+        RenderSetting.SetTextTileVisible(bShowTextTile);
+    }
 }
 
 void FControlPanel::DrawNavigationSection() const

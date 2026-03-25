@@ -68,7 +68,7 @@ namespace
 
     bool ShouldRenderTextItem(const FTextRenderItem& InItem)
     {
-        return InItem.State.IsVisible() && !InItem.Text.empty();
+        return InItem.State.IsVisible() && (InItem.FontResource == nullptr || !InItem.Text.empty());
     }
 
     FResolvedGlyph ResolveGlyph(const FFontResource& InFont, uint32 InCodePoint)
@@ -239,7 +239,7 @@ namespace
         }
         else
         {
-            OutRightAxis = PlacementWorld.GetRightVector().GetSafeNormal();
+            OutRightAxis = PlacementWorld.GetForwardVector().GetSafeNormal();
             OutUpAxis = PlacementWorld.GetUpVector().GetSafeNormal();
         }
     }
@@ -294,26 +294,30 @@ void FTextSubmitter::Submit(FD3D11LineBatchRenderer& InLineRenderer,
             FVector Origin;
             FVector RightAxis;
             FVector UpAxis;
-            BuildPlacementAxes(*SceneView, Item.Placement, Origin, RightAxis, UpAxis);
 
-            float Width = 1.0f;
-            float Height = 1.0f;
+            const FRenderPlacement& FallbackPlacement =
+                Item.bUseFallbackPlacement ? Item.FallbackPlacement : Item.Placement;
 
-            if (Item.LayoutMode == ETextLayoutMode::FitToBox)
+            const FMatrix& PlacementWorld = FallbackPlacement.World;
+            Origin = PlacementWorld.GetOrigin() + FallbackPlacement.WorldOffset;
+
+            FVector QuadRight;
+            FVector QuadUp;
+
+            if (FallbackPlacement.IsBillboard())
             {
-                const FVector WorldScale = Item.Placement.World.GetScaleVector();
-                Width = std::max(WorldScale.X, 1.0f);
-                Height = std::max(WorldScale.Y, 1.0f);
+                const FMatrix CameraWorld = SceneView->GetViewMatrix().GetInverse();
+                const FVector WorldScale = PlacementWorld.GetScaleVector();
+
+                QuadRight = CameraWorld.GetRightVector().GetSafeNormal() * WorldScale.X;
+                QuadUp = CameraWorld.GetUpVector().GetSafeNormal() * WorldScale.Z;
             }
             else
             {
-                const float FallbackExtent = std::max(Item.TextScale, 1.0f);
-                Width = FallbackExtent;
-                Height = FallbackExtent;
+                QuadRight = PlacementWorld.GetForwardVector();
+                QuadUp = PlacementWorld.GetUpVector();
             }
 
-            const FVector QuadRight = RightAxis * Width;
-            const FVector QuadUp = UpAxis * Height;
             const FVector BottomLeft = Origin - QuadRight * 0.5f - QuadUp * 0.5f;
 
             SubmitQuadOutline(InLineRenderer, BottomLeft, QuadRight, QuadUp,

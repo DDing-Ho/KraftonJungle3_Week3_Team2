@@ -95,11 +95,13 @@ struct FTextRenderItem
     FColor               Color = FColor::White();
 
     FRenderPlacement Placement;
+    FRenderPlacement FallbackPlacement;
+    bool             bUseFallbackPlacement = false;
 
     float TextScale = 1.0f;
     float LetterSpacing = 0.0f;
     float LineSpacing = 0.0f;
 
-    ETextLayoutMode LayoutMode = ETextLayoutMode::Natural;
+    ETextLayoutMode  LayoutMode = ETextLayoutMode::Natural;
     FRenderItemState State;
 };
