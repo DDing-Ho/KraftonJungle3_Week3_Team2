@@ -28,7 +28,7 @@
   "meta": {
     "app": "http://free-tex-packer.com",
     "version": "0.6.7",
-    "image": "texture.png",
+    "image": "sample_panel.png",
     "format": "RGBA8888",
     "size": {
       "w": 730,
